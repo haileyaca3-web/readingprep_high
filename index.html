@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>헤일리올라 Reading | 고등부</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f0f2f7;
+  --surface: #ffffff;
+  --surface2: #f3f5f9;
+  --accent: #1a2744;
+  --accent2: #0f1a33;
+  --accent-light: #eef2fa;
+  --accent-border: #c7d0e8;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --text: #111827;
+  --text2: #6b7280;
+  --border: #e5e7eb;
+  --radius: 14px;
+  --font-size-base: 17px;
+  --font-size-question: 19px;
+  --font-size-option: 17px;
+  --font-size-passage: 17px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 40px;
+  font-size: var(--font-size-base);
+}
+.screen { display: none; width: 100%; max-width: 520px; animation: fadeIn 0.2s ease; }
+.screen.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 22px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 12px;
+}
+
+/* Logo */
+.logo { text-align:center; margin-bottom:24px; }
+.logo h1 { font-family:'Montserrat',sans-serif; font-size:24px; font-weight:800; color:var(--accent); letter-spacing:-0.5px; }
+.logo p { color:var(--text2); font-size:13px; margin-top:4px; }
+
+h2 { font-size:18px; font-weight:700; margin-bottom:14px; }
+
+/* Inputs */
+input, select, textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: var(--text);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  margin-bottom: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.18s;
+  margin-bottom: 8px;
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover:not(:disabled) { background: var(--accent2); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); }
+.btn-danger { background: var(--danger); color: white; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.msg { font-size:14px; margin-top:8px; text-align:center; }
+.msg.error { color: var(--danger); }
+.msg.success { color: var(--success); }
+.msg.warn { color: var(--warning); }
+
+/* Select wrap */
+.select-wrap { position: relative; margin-bottom: 10px; }
+.select-wrap::after { content:'▾'; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--text2); pointer-events:none; }
+.select-wrap select { margin-bottom:0; padding-right:36px; }
+
+/* Stage grid */
+.stage-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.stage-card {
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.18s;
+  user-select: none;
+  position: relative;
+}
+.stage-card:hover { border-color: var(--accent); }
+.stage-card.selected { border-color: var(--accent); background: var(--accent-light); }
+.stage-card.done::after { content:'✓ 완료'; position:absolute; top:6px; right:8px; font-size:11px; font-weight:700; color:var(--success); }
+.stage-card .attempt-count { display:block; font-size:11px; color:var(--text2); margin-top:4px; font-weight:500; }
+.stage-card .num { font-size:36px; font-weight:800; color:var(--border); transition:color 0.18s; }
+.stage-card.selected .num { color: var(--accent); }
+.stage-card .label { font-size:15px; font-weight:700; color:var(--text); margin-top:6px; }
+
+/* Quiz */
+.quiz-header { margin-bottom:14px; }
+.timer-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.q-num { font-size:15px; color:var(--text2); }
+#timer-display { font-family:'Montserrat',sans-serif; font-size:24px; font-weight:800; color:var(--accent); transition:color 0.3s; }
+.progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; }
+.stage-badge { display:inline-block; background:var(--accent-light); color:var(--accent); border:1px solid var(--accent-border); border-radius:20px; padding:4px 14px; font-size:14px; font-weight:700; margin-bottom:14px; }
+
+/* Question */
+.question-text { font-size:var(--font-size-question); font-weight:700; margin-bottom:14px; line-height:1.5; }
+.question-sub { font-size:var(--font-size-option); color:var(--text2); background:var(--surface2); border-radius:8px; padding:14px; margin-bottom:14px; line-height:1.8; }
+.korean-hint { font-size:var(--font-size-option); color:var(--accent); background:var(--accent-light); border:1px solid var(--accent-border); border-radius:8px; padding:12px 14px; margin-bottom:14px; font-weight:500; }
+
+/* Options */
+.options { display:flex; flex-direction:column; gap:10px; }
+.option {
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 15px 16px;
+  cursor: pointer;
+  font-size: var(--font-size-option);
+  font-family: inherit;
+  color: var(--text);
+  text-align: left;
+  transition: all 0.18s;
+  line-height: 1.6;
+}
+.option:hover:not(:disabled) { border-color: var(--accent); background:var(--accent-light); }
+.option.correct { border-color:var(--success); background:#f0fdf4; color:var(--success); }
+.option.wrong { border-color:var(--danger); background:#fef2f2; color:var(--danger); }
+.option.selected { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
+.option:disabled { cursor:default; }
+
+/* Feedback */
+.feedback-correct { background:#f0fdf4; border:1px solid var(--success); border-radius:8px; padding:10px; color:var(--success); font-size:14px; margin-top:12px; text-align:center; }
+.feedback-wrong { background:#fef2f2; border:1px solid var(--danger); border-radius:8px; padding:10px; color:var(--danger); font-size:14px; margin-top:12px; text-align:center; }
+
+/* Passage / blank */
+.passage-text { font-size:var(--font-size-passage); line-height:2.1; background:var(--surface2); border-radius:10px; padding:16px; max-height:340px; overflow-y:auto; }
+.blank-word { display:inline-block; background:#dbeafe; border:2px solid var(--accent); border-radius:6px; padding:2px 10px; cursor:pointer; color:var(--accent); font-weight:700; transition:all 0.18s; margin:0 2px; }
+.blank-word:hover { background:var(--accent-border); }
+.blank-word.answered { background:#dcfce7; border:2px solid var(--success); color:var(--success); font-weight:700; }
+.blank-popup { position:fixed; bottom:0; left:0; right:0; background:rgba(0,0,0,0.45); padding:16px; z-index:100; }
+.popup-inner { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; max-width:520px; margin:0 auto; box-shadow:0 -4px 20px rgba(0,0,0,0.12); }
+
+/* Split layout (tablet) */
+.split-layout { display:flex; gap:14px; }
+.split-passage { flex:1; background:var(--surface2); border-radius:10px; padding:16px; font-size:var(--font-size-passage); line-height:2; color:var(--text); border:1px solid var(--border); overflow-y:auto; max-height:420px; }
+.split-options { flex:1; display:flex; flex-direction:column; gap:10px; }
+
+/* Result */
+.result-score { text-align:center; padding:16px 0; }
+.score-circle { width:110px; height:110px; border-radius:50%; background:var(--accent); display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0 auto 14px; }
+.score-circle .score-num { font-size:34px; font-weight:800; color:white; }
+.score-circle .score-label { font-size:12px; color:rgba(255,255,255,0.8); }
+.result-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+.result-tab { padding:6px 12px; border-radius:20px; font-size:13px; font-weight:700; cursor:pointer; border:1.5px solid var(--border); background:var(--surface2); color:var(--text2); transition:all 0.18s; }
+.result-tab.active { background:var(--accent); color:white; border-color:var(--accent); }
+
+/* Wrong note */
+.wrong-note-section { margin-bottom:16px; }
+.wrong-note-title { font-size:13px; font-weight:700; color:var(--accent); background:var(--accent-light); border-left:3px solid var(--accent); padding:6px 10px; border-radius:0 6px 6px 0; margin-bottom:8px; }
+.wrong-note-item { background:var(--surface2); border-radius:8px; padding:10px 12px; margin-bottom:6px; font-size:14px; }
+
+/* Top bar */
+.top-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.back-btn { background:none; border:1.5px solid var(--border); color:var(--text2); padding:7px 14px; border-radius:8px; font-size:13px; cursor:pointer; font-family:inherit; transition:all 0.18s; }
+.back-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* Loader */
+.loader { text-align:center; padding:40px; color:var(--text2); font-size:14px; }
+.spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 10px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.divider { border:none; border-top:1px solid var(--border); margin:14px 0; }
+.small { font-size:13px; color:var(--text2); }
+.chip { display:inline-block; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; padding:6px 14px; font-size:14px; cursor:pointer; transition:all 0.18s; margin:3px; font-family:inherit; }
+.chip.active { border-color:var(--accent); background:var(--accent-light); color:var(--accent); font-weight:700; }
+
+/* School chip */
+.school-chip { padding:12px 14px; border:1.5px solid var(--border); border-radius:10px; background:var(--surface2); cursor:pointer; font-size:15px; margin-bottom:8px; display:flex; align-items:center; gap:10px; transition:all 0.18s; }
+.school-chip:hover { border-color:var(--accent); }
+.school-chip.sel { border-color:var(--accent); background:var(--accent-light); }
+.school-chip .dot { width:10px; height:10px; border-radius:50%; border:2px solid #d1d5db; flex-shrink:0; }
+.school-chip.sel .dot { background:var(--accent); border-color:var(--accent); }
+
+/* Security overlay */
+.lock-overlay { position:fixed; inset:0; background:rgba(5,10,25,0.98); z-index:9999; display:none; flex-direction:column; align-items:center; justify-content:center; padding:32px; text-align:center; }
+.lock-overlay.active { display:flex; }
+.lock-icon { font-size:60px; margin-bottom:20px; }
+.lock-title { color:white; font-size:22px; font-weight:700; margin-bottom:12px; }
+.lock-msg { color:rgba(255,255,255,0.75); font-size:16px; line-height:1.7; margin-bottom:20px; }
+.lock-warn { color:#fbbf24; font-size:14px; font-weight:600; }
+
+/* Warning banner */
+.warn-banner { position:fixed; top:0; left:0; right:0; background:var(--danger); color:white; padding:14px 20px; font-size:15px; font-weight:700; z-index:9000; display:none; text-align:center; animation:slideDown 0.3s ease; }
+.warn-banner.active { display:block; }
+@keyframes slideDown { from { transform:translateY(-100%); } to { transform:translateY(0); } }
+
+/* Notice */
+.notice { background:var(--accent-light); border:1px solid var(--accent-border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--accent); margin-bottom:12px; border-left:3px solid var(--accent); }
+
+/* Tag */
+.tag { display:inline-block; font-size:12px; padding:3px 10px; border-radius:20px; font-weight:700; }
+.tag-pre { background:#FEF3C7; color:#92400E; }
+.tag-post { background:#DBEAFE; color:#1E40AF; }
+
+/* Current book banner */
+#current-book-banner { background:var(--accent-light); border:1px solid var(--accent-border); border-radius:10px; padding:10px 14px; margin:6px 0 14px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+
+/* Photo area */
+.photo-area { border:2px dashed var(--accent-border); border-radius:12px; padding:28px 16px; text-align:center; cursor:pointer; background:var(--surface2); margin-bottom:10px; transition:all 0.18s; }
+.photo-area:hover { border-color:var(--accent); background:var(--accent-light); }
+
+/* Tablet split for passage quiz */
+@media (min-width: 600px) {
+  body { padding: 28px 20px 48px; }
+  .screen { max-width: 720px; }
+  :root { --font-size-base: 18px; --font-size-question: 20px; --font-size-option: 18px; --font-size-passage: 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- SECURITY OVERLAY -->
+<div class="lock-overlay" id="lock-overlay">
+  <div class="lock-icon" style="font-size:48px;margin-bottom:16px">&#x1F512;</div>
+  <div class="lock-title" id="lock-title">시험이 종료되었습니다</div>
+  <div class="lock-msg" id="lock-msg">선생님께 문의하세요.</div>
+  <div class="lock-warn" id="lock-sub"></div>
+  <button class="btn btn-danger" style="margin-top:24px;width:auto;padding:12px 28px" onclick="closeLock()">확인</button>
+</div>
+
+<!-- WARNING BANNER -->
+<div class="warn-banner" id="warn-banner">앱을 벗어났습니다! 한 번 더 이탈 시 시험이 자동 종료됩니다.</div>
+
+<!-- ===== LOGIN ===== -->
+<div id="screen-login" class="screen active">
+  <div class="card">
+    <div class="logo">
+      <h1>Hailey Reading</h1>
+      <p>헤일리올라 고등부 지문 학습 시스템</p>
+    </div>
+    <input type="text" id="login-id" placeholder="아이디" autocomplete="username"/>
+    <input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password"/>
+    <button class="btn btn-primary" onclick="login()">로그인</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-register')">회원가입</button>
+    <div id="login-msg" class="msg"></div>
+    <div style="text-align:center;margin-top:14px">
+      <span onclick="showScreen('screen-teacher-login')" style="font-size:12px;color:var(--text2);cursor:pointer;text-decoration:underline">선생님 로그인</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== REGISTER ===== -->
+<div id="screen-register" class="screen">
+  <div class="card">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showScreen('screen-login')">← 뒤로</button>
+      <h2 style="margin:0">회원가입</h2>
+    </div>
+    <input type="text" id="reg-id" placeholder="아이디 (영문+숫자)" autocomplete="off"/>
+    <input type="password" id="reg-pw" placeholder="비밀번호" autocomplete="new-password"/>
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px;margin-top:4px">학교 / 학년 선택</div>
+    <div id="school-list"></div>
+    <button class="btn btn-primary" onclick="register()" style="margin-top:8px">가입 신청</button>
+    <div id="reg-msg" class="msg"></div>
+  </div>
+</div>
+
+<!-- ===== WELCOME ===== -->
+<div id="screen-welcome" class="screen">
+  <div class="card" style="background:var(--accent);color:white;border:none;box-shadow:0 8px 30px rgba(26,39,68,0.3);text-align:center">
+    <h2 style="color:white;font-size:20px;margin-bottom:10px">리딩테스트 시작</h2>
+    <p id="welcome-greeting" style="color:rgba(255,255,255,0.85);font-size:17px;font-weight:600;margin-bottom:24px"></p>
+    <p style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:8px">책과 노트는 모두 정리해 주세요.</p>
+    <p style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:24px">선생님 앞에서 진행합니다.</p>
+    <button class="btn" onclick="proceedFromWelcome()" style="background:white;color:var(--accent);font-weight:700;margin-bottom:8px">시작하기</button>
+    <button class="btn" onclick="showMyRecords()" style="background:transparent;color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.4);">내 기록 보기</button>
+    <p id="welcome-cheer" style="color:rgba(255,255,255,0.5);font-size:13px;font-style:italic;margin-top:24px;min-height:18px"></p>
+  </div>
+  <div class="card" style="background:var(--surface2);border:none">
+    <div style="font-size:13px;color:var(--text2)">현재 학교 / 학년</div>
+    <div id="welcome-school" style="font-size:16px;font-weight:700;color:var(--accent);margin-top:4px"></div>
+  </div>
+  <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;font-size:13px;color:#92400E;margin-bottom:12px">
+    <b>시험 중 주의사항</b><br>
+    다른 앱/탭 전환 시 경고 (2회 이탈 시 자동 종료)<br>
+    화면 복제/분할 감지 시 즉시 잠금<br>
+    모든 단계에 시간제한 있음
+  </div>
+  <button class="btn btn-secondary" onclick="logout()">로그아웃</button>
+</div>
+
+<!-- ===== MY RECORDS ===== -->
+<div id="screen-records" class="screen">
+  <div class="card">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showScreen('screen-welcome')">← 뒤로</button>
+      <h2 style="margin:0">내 기록</h2>
+    </div>
+    <div id="records-content"></div>
+  </div>
+</div>
+
+<!-- ===== BOOK SELECT ===== -->
+<div id="screen-book" class="screen">
+  <div class="card">
+    <h2>교재 · 지문 선택</h2>
+    <div id="book-school-notice" class="notice"></div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px">교재</div>
+    <div class="select-wrap">
+      <select id="book-select" onchange="loadUnits()">
+        <option value="">교재를 선택하세요</option>
+      </select>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px">Unit</div>
+    <div class="select-wrap">
+      <select id="unit-select" onchange="loadPassageNums()">
+        <option value="">Unit을 선택하세요</option>
+      </select>
+    </div>
+    <div id="passage-select-wrap" style="display:none">
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px">지문 선택 <span style="font-size:12px;font-weight:400;color:var(--text2)">(복수 선택 가능)</span></div>
+      <div id="passage-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+    </div>
+    <button class="btn btn-primary" onclick="goToStageSelect()">다음</button>
+    <button class="btn btn-secondary" onclick="logout()">로그아웃</button>
+  </div>
+</div>
+
+<!-- ===== STAGE SELECT ===== -->
+<div id="screen-stage" class="screen">
+  <div class="card">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showScreen('screen-book')">← 뒤로</button>
+      <h2 style="margin:0">단계 선택</h2>
+    </div>
+    <div id="current-book-banner"></div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:16px">진행할 단계를 선택하세요 (여러 개 가능)</p>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span class="tag tag-pre">수업 전</span>
+        <span style="font-size:13px;color:var(--text2)">읽기 전 이해도 점검</span>
+      </div>
+      <div class="stage-grid">
+        <div class="stage-card" id="stage-1" onclick="toggleStage(1)">
+          <div class="num">1</div><div class="label">문장선택<br>(한국어)</div>
+        </div>
+        <div class="stage-card" id="stage-2" onclick="toggleStage(2)">
+          <div class="num">2</div><div class="label">문장선택<br>(영어)</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span class="tag tag-post">수업 후</span>
+        <span style="font-size:13px;color:var(--text2)">학습 후 마무리</span>
+      </div>
+      <div class="stage-grid">
+        <div class="stage-card" id="stage-3" onclick="toggleStage(3)">
+          <div class="num">3-1</div><div class="label">단어 객관식</div>
+        </div>
+        <div class="stage-card" id="stage-6" onclick="toggleStage(6)">
+          <div class="num">3-2</div><div class="label">단어 주관식</div>
+        </div>
+        <div class="stage-card" id="stage-4" onclick="toggleStage(4)">
+          <div class="num">4-1</div><div class="label">빈칸 객관식</div>
+        </div>
+        <div class="stage-card" id="stage-5" onclick="toggleStage(5)">
+          <div class="num">4-2</div><div class="label">빈칸 주관식</div>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text2);margin-bottom:14px">
+      ⏱ 시간제한: 1·2단계 20초/문항 · 3단계 15초 · 4단계 5분 (전체)
+    </div>
+    <button class="btn btn-primary" onclick="startTest()">시험 시작</button>
+    <div id="stage-msg" class="msg"></div>
+  </div>
+</div>
+
+<!-- ===== QUIZ ===== -->
+<div id="screen-quiz" class="screen">
+  <div class="card">
+    <div id="quiz-content"></div>
+  </div>
+</div>
+
+<!-- ===== RESULT ===== -->
+<div id="screen-result" class="screen">
+  <div class="card">
+    <h2>결과</h2>
+    <div id="result-content"></div>
+    <button class="btn btn-primary" onclick="showScreen('screen-stage')" style="margin-top:18px">단계 선택하기</button>
+  </div>
+</div>
+
+<!-- ===== TEACHER LOGIN ===== -->
+<div id="screen-teacher-login" class="screen">
+  <div class="card">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showScreen('screen-login')">← 뒤로</button>
+      <h2 style="margin:0">선생님 로그인</h2>
+    </div>
+    <input type="text" id="teacher-id" placeholder="아이디"/>
+    <input type="password" id="teacher-pw" placeholder="비밀번호"/>
+    <button class="btn btn-primary" onclick="teacherLogin()">로그인</button>
+    <div id="teacher-msg" class="msg"></div>
+  </div>
+</div>
+
+<!-- ===== TEACHER MAIN ===== -->
+<div id="screen-teacher" class="screen">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0">선생님 화면</h2>
+      <span onclick="loadTeacherData()" style="font-size:13px;color:var(--text2);cursor:pointer">새로고침</span>
+    </div>
+    <div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap">
+      <button id="tab-today" class="btn btn-primary" style="padding:9px 16px;width:auto;font-size:14px" onclick="switchTeacherTab('today')">결과보기</button>
+      <button id="tab-input" class="btn btn-secondary" style="padding:9px 16px;width:auto;font-size:14px;margin:0" onclick="switchTeacherTab('input')">지문입력</button>
+      <button id="tab-students" class="btn btn-secondary" style="padding:9px 16px;width:auto;font-size:14px;margin:0" onclick="switchTeacherTab('students')">학생관리</button>
+    </div>
+    <div id="teacher-content"></div>
+    <button class="btn btn-secondary" onclick="logout()" style="margin-top:14px">로그아웃</button>
+  </div>
+</div>
+
+<!-- ===== ADMIN ===== -->
+<div id="screen-admin" class="screen">
+  <div class="card">
+    <h2>학생 관리 (관리자)</h2>
+    <div id="admin-content"></div>
+    <button class="btn btn-secondary" onclick="logout()" style="margin-top:14px">로그아웃</button>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZkqv6qkXM_SmwvuSDYcwjRbPWyujOlgxKVhLh9RNy252yoG7Wg78oBxlwOLlLA_ALxA/exec';
+const ADMIN_ID = 'admin';
+const ADMIN_PW = 'hailey_admin_2026';
+
+// Anthropic API 키 (사진 자동 추출용 - 선생님 화면에서 설정 가능)
+let CLAUDE_API_KEY = localStorage.getItem('hailey_claude_key') || '';
+
+// 학교 목록 (선생님이 지문 배포 시 사용 + 회원가입 시 선택)
+const SCHOOLS = [
+  '순천여고 1학년',
+  '순천여고 2학년',
+  '금당고 1학년',
+  '금당고 2학년',
+  '매여고 2학년',
+  '효천고 2학년',
+  '제일고 1학년',
+  '순천고 1학년',
+  '강남여고 1학년',
+  '강남여고 2학년'
+];
+
+// ===== STAGE MAPPING =====
+const INTERNAL_TO_SHEET = {1:3, 2:1, 3:2, 4:4, 5:5, 6:6};
+const STAGE_LABELS = { 1:'문장선택(한국어)', 2:'문장선택(영어)', 3:'단어 객관식', 4:'빈칸 객관식', 5:'빈칸 주관식', 6:'단어 주관식' };
+
+// ===== STATE =====
+let currentUser = null;
+let selectedBook = '';
+let selectedUnit = '';
+let selectedPassages = []; // 선택한 지문 번호 배열
+let selectedStages = [];
+let stageQueue = [];
+let currentStageIndex = 0;
+let myStageCounts = {1:0,2:0,3:0,6:0,'4-1':0,'4-2':0};
+let passageData = null;
+let wordsData = [];
+let stageResults = {};
+let currentQ = 0;
+let questions = [];
+let score = 0;
+let wrongItems = [];
+let retryFlags = {};
+
+// Security
+let warnCount = 0;
+let quizActive = false;
+let multiTabLocked = false;
+
+// Timer
+let timerInterval = null;
+let timerLeft = 0;
+
+// ===== SECURITY =====
+// 1. 앱 이탈 감지 (visibilitychange)
+document.addEventListener('visibilitychange', () => {
+  if (!quizActive || multiTabLocked) return;
+  if (document.hidden) {
+    warnCount++;
+    if (warnCount === 1) {
+      const b = document.getElementById('warn-banner');
+      b.classList.add('active');
+      setTimeout(() => b.classList.remove('active'), 5000);
+    } else {
+      triggerLock('시험이 자동 종료되었습니다', '앱을 두 번 이탈하여 시험이 종료되었습니다.\n선생님께 문의하세요.', '강제종료 기록이 남습니다');
+    }
+  }
+});
+
+// 2. 다중 탭/창 감지 (BroadcastChannel)
+let bc;
+try {
+  bc = new BroadcastChannel('hailey_reading_hs');
+  bc.onmessage = (e) => {
+    if (e.data === 'ping' && quizActive) {
+      bc.postMessage('pong');
+    }
+    if (e.data === 'pong' && quizActive) {
+      triggerLock('복제 화면 감지됨', '다른 탭이나 창에서 이 앱이 열려 있습니다.\n시험이 즉시 종료됩니다.', '선생님께 자동 통보됩니다');
+    }
+  };
+  // 퀴즈 시작 시 다른 탭 있는지 확인
+  setInterval(() => {
+    if (quizActive) bc.postMessage('ping');
+  }, 3000);
+} catch(e) {}
+
+function triggerLock(title, msg, sub) {
+  multiTabLocked = true;
+  quizActive = false;
+  stopTimer();
+  document.getElementById('lock-title').textContent = title;
+  document.getElementById('lock-msg').textContent = msg;
+  document.getElementById('lock-sub').textContent = sub || '';
+  document.getElementById('lock-overlay').classList.add('active');
+}
+function closeLock() {
+  document.getElementById('lock-overlay').classList.remove('active');
+  multiTabLocked = false;
+  warnCount = 0;
+  showScreen('screen-welcome');
+}
+
+// ===== TIMER =====
+function startPerQuestionTimer(secs, onExpire) {
+  clearInterval(timerInterval);
+  timerLeft = secs;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timerLeft--;
+    updateTimerDisplay();
+    if (timerLeft <= 0) { clearInterval(timerInterval); onExpire(); }
+  }, 1000);
+}
+function startTotalTimer(secs, onExpire) {
+  clearInterval(timerInterval);
+  timerLeft = secs;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timerLeft--;
+    updateTimerDisplay();
+    if (timerLeft <= 0) { clearInterval(timerInterval); onExpire(); }
+  }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+function updateTimerDisplay() {
+  const el = document.getElementById('timer-display');
+  if (!el) return;
+  const m = Math.floor(timerLeft/60), s = timerLeft%60;
+  el.textContent = m > 0 ? `${m}:${String(s).padStart(2,'0')}` : `${timerLeft}초`;
+  el.style.color = timerLeft <= 5 ? 'var(--danger)' : 'var(--accent)';
+}
+
+// ===== NAV =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  quizActive = (id === 'screen-quiz');
+  if (!quizActive) { stopTimer(); warnCount = 0; }
+}
+
+// ===== API =====
+async function api(params) {
+  const url = SCRIPT_URL + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+async function apiPost(data) {
+  const res = await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify(data) });
+  return res.json();
+}
+const cache = {};
+async function apiCached(params) {
+  const key = JSON.stringify(params);
+  if (cache[key]) return cache[key];
+  const result = await api(params);
+  cache[key] = result;
+  return result;
+}
+
+// ===== AUTH =====
+async function login() {
+  const id = document.getElementById('login-id').value.trim();
+  const pw = document.getElementById('login-pw').value.trim();
+  const msg = document.getElementById('login-msg');
+  if (!id || !pw) { msg.className='msg error'; msg.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  if (id === ADMIN_ID && pw === ADMIN_PW) {
+    currentUser = { id, name:'관리자' };
+    loadAdminPage(); showScreen('screen-admin'); return;
+  }
+  msg.className='msg'; msg.textContent='로그인 중...';
+  try {
+    const r = await api({ action:'login', id, pw });
+    if (r.result === 'success') {
+      currentUser = { id, name:r.name, school:r.school||'', lastBook:r.lastBook||'', lastUnit:r.lastUnit||'' };
+      document.getElementById('welcome-greeting').textContent = `${r.name} 학생, 오늘도 응원합니다.`;
+      document.getElementById('welcome-school').textContent = r.school || '';
+      const cheers = ['The expert in anything was once a beginner.','Practice makes perfect.','Every mistake is a step forward.','Believe you can and you\'re halfway there.','Confidence comes from preparation.','Calm mind, clear answers.','Trust the process, trust yourself.','Dream big. Work hard. Stay focused.','Today is a new chance to do better.','Small steps lead to big results.'];
+      document.getElementById('welcome-cheer').textContent = `"${cheers[Math.floor(Math.random()*cheers.length)]}"`;
+      showScreen('screen-welcome');
+      loadBooks().catch(()=>{});
+    } else if (r.result === 'pending') {
+      msg.className='msg warn'; msg.textContent='승인 대기 중입니다. 선생님 승인 후 이용 가능해요.';
+    } else {
+      msg.className='msg error'; msg.textContent='아이디 또는 비밀번호가 틀렸습니다.';
+    }
+  } catch(e) { msg.className='msg error'; msg.textContent='오류가 발생했습니다.'; }
+}
+
+async function register() {
+  const btn = document.querySelector('#screen-register .btn-primary');
+  if (btn && btn.disabled) return;
+  const id = document.getElementById('reg-id').value.trim();
+  const pw = document.getElementById('reg-pw').value.trim();
+  const schoolEl = document.querySelector('.school-chip.sel');
+  const school = schoolEl ? schoolEl.dataset.school : '';
+  const msg = document.getElementById('reg-msg');
+  const name = id; // 아이디를 이름으로 사용
+  if (!id||!pw) { msg.className='msg error'; msg.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  if (!school) { msg.className='msg error'; msg.textContent='학교/학년을 선택하세요.'; return; }
+  if (btn) { btn.disabled=true; btn.textContent='신청 중...'; }
+  msg.className='msg'; msg.textContent='가입 신청 중입니다...';
+  try {
+    const r = await apiPost({ action:'register', id, name, password:pw, school });
+    if (r.result === 'success') {
+      msg.className='msg success'; msg.textContent='가입 신청 완료! 선생님 승인 후 로그인 가능합니다.';
+      ['reg-id','reg-pw'].forEach(f=>document.getElementById(f).value='');
+    } else if (r.result === 'duplicate') {
+      msg.className='msg error'; msg.textContent = r.msg||'이미 가입된 아이디입니다.';
+    } else { msg.className='msg error'; msg.textContent='가입에 실패했습니다.'; }
+  } catch(e) { msg.className='msg error'; msg.textContent='오류가 발생했습니다.'; }
+  finally { if (btn) { btn.disabled=false; btn.textContent='가입 신청'; } }
+}
+
+function logout() { currentUser=null; showScreen('screen-login'); }
+
+// school chips 초기화
+function initSchoolChips() {
+  const el = document.getElementById('school-list');
+  if (!el) return;
+  el.style.display = 'grid';
+  el.style.gridTemplateColumns = '1fr 1fr';
+  el.style.gap = '8px';
+  el.innerHTML = SCHOOLS.map(s => `<div class="school-chip" data-school="${s}" onclick="selSchool(this)" style="text-align:center;padding:11px 8px;border-radius:10px;line-height:1.3">${s}</div>`).join('');
+}
+function selSchool(el) {
+  document.querySelectorAll('.school-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+initSchoolChips();
+
+// ===== WELCOME =====
+function proceedFromWelcome() {
+  if (currentUser && currentUser.lastBook && currentUser.lastUnit) {
+    selectedBook = currentUser.lastBook;
+    selectedUnit = currentUser.lastUnit;
+    goToStageSelectDirect();
+  } else {
+    showScreen('screen-book');
+  }
+}
+
+async function goToStageSelectDirect() {
+  if (!selectedBook || !selectedUnit) { showScreen('screen-book'); return; }
+  selectedStages = [];
+  [1,2,3,4,5,6].forEach(n => {
+    const card = document.getElementById('stage-'+n);
+    if (!card) return;
+    card.classList.remove('selected','done');
+    const old = card.querySelector('.attempt-count');
+    if (old) old.remove();
+  });
+  renderCurrentBookBanner();
+  showScreen('screen-stage');
+  await loadMyStageCounts();
+}
+
+// ===== BOOK / UNIT / PASSAGE =====
+async function loadBooks() {
+  const sel = document.getElementById('book-select');
+  sel.innerHTML = '<option value="">교재를 선택하세요</option>';
+  try {
+    // 학교 필터링: 학생 학교에 배포된 교재만
+    const params = { action:'getBooks' };
+    if (currentUser && currentUser.school) params.school = currentUser.school;
+    const books = await apiCached(params);
+    books.forEach(b => {
+      const o = document.createElement('option');
+      o.value = b; o.textContent = b;
+      sel.appendChild(o);
+    });
+    if (currentUser && currentUser.school) {
+      document.getElementById('book-school-notice').textContent = `📌 ${currentUser.school} 범위 교재만 표시됩니다`;
+    }
+  } catch(e) {}
+}
+
+function normalizeUnit(u) {
+  if (u == null) return '';
+  const s = String(u).trim();
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if (isoMatch) return `Unit ${parseInt(isoMatch[2],10)}-${parseInt(isoMatch[3],10)}`;
+  const dateStrMatch = s.match(/^[A-Za-z]{3} ([A-Za-z]{3}) (\d{2}) (\d{4})/);
+  if (dateStrMatch) { const months={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12}; return `Unit ${months[dateStrMatch[1]]}-${parseInt(dateStrMatch[2],10)}`; }
+  return s;
+}
+
+async function loadUnits() {
+  const book = document.getElementById('book-select').value;
+  const sel = document.getElementById('unit-select');
+  sel.innerHTML = '<option value="">불러오는 중...</option>';
+  sel.disabled = true;
+  document.getElementById('passage-select-wrap').style.display = 'none';
+  selectedPassages = [];
+  if (!book) { sel.innerHTML='<option value="">Unit을 선택하세요</option>'; sel.disabled=false; return; }
+  try {
+    const units = await apiCached({ action:'getUnits', book });
+    sel.innerHTML = '<option value="">Unit을 선택하세요</option>';
+    units.forEach(u => {
+      const label = normalizeUnit(u);
+      const o = document.createElement('option'); o.value=label; o.textContent=label; sel.appendChild(o);
+    });
+  } catch(e) { sel.innerHTML='<option value="">불러오기 실패</option>'; }
+  sel.disabled = false;
+}
+
+async function loadPassageNums() {
+  const book = document.getElementById('book-select').value;
+  const unit = document.getElementById('unit-select').value;
+  if (!book || !unit) { document.getElementById('passage-select-wrap').style.display='none'; return; }
+  selectedPassages = [];
+  try {
+    // 해당 unit의 지문 번호 목록 로드 (passageNums 액션)
+    const nums = await apiCached({ action:'getPassageNums', book, unit });
+    const wrap = document.getElementById('passage-select-wrap');
+    const chips = document.getElementById('passage-chips');
+    if (nums && nums.length > 0) {
+      chips.innerHTML = nums.map(n => `<button class="chip" data-num="${n}" onclick="togglePassageChip(this)">지문 ${n}</button>`).join('') + `<button class="chip" data-num="all" onclick="selectAllPassages()">전체</button>`;
+      wrap.style.display = 'block';
+    } else {
+      // 지문 번호 없으면 단일 지문으로 처리
+      wrap.style.display = 'none';
+      selectedPassages = ['all'];
+    }
+  } catch(e) {
+    document.getElementById('passage-select-wrap').style.display = 'none';
+    selectedPassages = ['all'];
+  }
+}
+
+function togglePassageChip(el) {
+  el.classList.toggle('active');
+  const num = el.dataset.num;
+  if (el.classList.contains('active')) {
+    if (!selectedPassages.includes(num)) selectedPassages.push(num);
+  } else {
+    selectedPassages = selectedPassages.filter(p=>p!==num);
+  }
+}
+function selectAllPassages() {
+  document.querySelectorAll('#passage-chips .chip').forEach(c=>{c.classList.add('active');if(!selectedPassages.includes(c.dataset.num))selectedPassages.push(c.dataset.num);});
+}
+
+async function goToStageSelect() {
+  selectedBook = document.getElementById('book-select').value;
+  selectedUnit = document.getElementById('unit-select').value;
+  if (!selectedBook||!selectedUnit) { alert('교재와 Unit을 선택하세요.'); return; }
+  if (document.getElementById('passage-select-wrap').style.display !== 'none' && selectedPassages.length === 0) {
+    alert('지문을 하나 이상 선택하세요.'); return;
+  }
+  if (currentUser) {
+    currentUser.lastBook = selectedBook; currentUser.lastUnit = selectedUnit;
+    apiPost({ action:'saveLastSelection', id:currentUser.id, book:selectedBook, unit:selectedUnit }).catch(()=>{});
+  }
+  selectedStages = [];
+  [1,2,3,4,5,6].forEach(n=>{
+    const card=document.getElementById('stage-'+n);
+    if(!card)return;
+    card.classList.remove('selected','done');
+    const old=card.querySelector('.attempt-count');
+    if(old)old.remove();
+  });
+  renderCurrentBookBanner();
+  showScreen('screen-stage');
+  await loadMyStageCounts();
+}
+
+function renderCurrentBookBanner() {
+  const el = document.getElementById('current-book-banner');
+  if (!el) return;
+  const psgText = selectedPassages.length > 0 && !selectedPassages.includes('all')
+    ? ` · 지문 ${selectedPassages.join(',')}` : '';
+  el.innerHTML = `
+    <div style="flex:1;min-width:0">
+      <p style="font-size:11px;color:var(--accent);font-weight:600;margin:0">현재 선택</p>
+      <p style="font-size:15px;font-weight:700;color:var(--text);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(selectedBook)} · ${escHtml(selectedUnit)}${escHtml(psgText)}</p>
+    </div>
+    <button onclick="changeBook()" style="background:white;border:1.5px solid var(--accent);color:var(--accent);padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">바꾸기</button>
+  `;
+}
+function changeBook() { showScreen('screen-book'); }
+
+async function loadMyStageCounts() {
+  myStageCounts = {1:0,2:0,3:0,6:0,'4-1':0,'4-2':0};
+  try {
+    const myResults = await api({ action:'getResults', id:currentUser.id, book:selectedBook, unit:selectedUnit });
+    (myResults||[]).forEach(r => {
+      if (String(r.id)!==String(currentUser.id)||String(r.book)!==String(selectedBook)||String(r.unit)!==String(selectedUnit)) return;
+      const s = Number(r.stage);
+      if (s===4) { if (String(r.retry).toUpperCase()==='Y') myStageCounts['4-2']++; else myStageCounts['4-1']++; }
+      else if (s===5) { myStageCounts['4-2']++; }
+      else if (myStageCounts[s]!=null) myStageCounts[s]++;
+    });
+    [[1,1],[2,2],[3,3],[6,6]].forEach(([s,n])=>{
+      if(myStageCounts[s]>0){const card=document.getElementById('stage-'+n);if(!card)return;card.classList.add('done');const sp=document.createElement('span');sp.className='attempt-count';sp.textContent=`${myStageCounts[s]}회 응시`;card.appendChild(sp);}
+    });
+    if(myStageCounts['4-1']>0){const c=document.getElementById('stage-4');if(c){c.classList.add('done');const sp=document.createElement('span');sp.className='attempt-count';sp.textContent=`${myStageCounts['4-1']}회 응시`;c.appendChild(sp);}}
+    if(myStageCounts['4-2']>0){const c=document.getElementById('stage-5');if(c){c.classList.add('done');const sp=document.createElement('span');sp.className='attempt-count';sp.textContent=`${myStageCounts['4-2']}회 응시`;c.appendChild(sp);}}
+  } catch(e) {}
+}
+
+function toggleStage(n) {
+  const card = document.getElementById('stage-'+n);
+  const idx = selectedStages.indexOf(n);
+  if (idx===-1) { selectedStages.push(n); card.classList.add('selected'); }
+  else { selectedStages.splice(idx,1); card.classList.remove('selected'); }
+}
+
+// ===== START TEST =====
+async function startTest() {
+  const msg = document.getElementById('stage-msg');
+  if (!selectedStages.length) { msg.className='msg error'; msg.textContent='단계를 하나 이상 선택하세요.'; return; }
+  const STAGE_ORDER = {1:1,2:2,3:3,6:4,4:5,5:6};
+  stageQueue = [...selectedStages].sort((a,b)=>(STAGE_ORDER[a]||99)-(STAGE_ORDER[b]||99));
+  stageResults = {1:{score:0,total:0,wrong:[]},2:{score:0,total:0,wrong:[]},3:{score:0,total:0,wrong:[]},4:{score:0,total:0,wrong:[]}};
+  retryFlags = {1:'N',2:'N',3:'N',4:'N'};
+  currentStageIndex = 0;
+  showScreen('screen-quiz');
+  quizActive = true;
+  document.getElementById('quiz-content').innerHTML = '<div class="loader"><div class="spinner"></div>지문 불러오는 중...</div>';
+  try {
+    const [passage, words] = await Promise.all([
+      apiCached({ action:'getPassage', book:selectedBook, unit:selectedUnit, passages:selectedPassages.join(',') }),
+      apiCached({ action:'getWords', book:selectedBook, unit:selectedUnit })
+    ]);
+    passageData = passage;
+    wordsData = words;
+    if (!passageData.sentences || !passageData.sentences.length) {
+      document.getElementById('quiz-content').innerHTML = '<p style="color:var(--danger);text-align:center;padding:20px">지문 데이터가 없습니다.<br>선생님께 문의하세요.</p>';
+      return;
+    }
+    runNextStage();
+  } catch(e) {
+    document.getElementById('quiz-content').innerHTML = '<p style="color:var(--danger)">데이터를 불러오지 못했습니다.</p>';
+  }
+}
+
+function runNextStage() {
+  if (currentStageIndex >= stageQueue.length) { finishAll(); return; }
+  const stage = stageQueue[currentStageIndex];
+  score=0; wrongItems=[]; currentQ=0;
+  if (stage===1) buildStage_En2Ko();
+  else if (stage===2) buildStage_Ko2En();
+  else if (stage===3) buildStage_WordMC();
+  else if (stage===6) buildStage_WordType();
+  else if (stage===4) buildStage_BlankMC();
+  else if (stage===5) buildStage_BlankType();
+}
+
+// ===== STAGE 1: 영어문장 → 한국어 (분할 레이아웃) =====
+function buildStage_En2Ko() {
+  const pairs = passageData.sentences||[];
+  if (!pairs.length) { stageResults[2]={score:0,total:0,wrong:[]}; currentStageIndex++; runNextStage(); return; }
+  questions = shuffle(pairs).slice(0, Math.min(pairs.length, 20));
+  showEn2KoQ();
+}
+
+function showEn2KoQ() {
+  if (currentQ >= questions.length) {
+    stopTimer();
+    stageResults[2] = {score, total:questions.length, wrong:wrongItems};
+    currentStageIndex++; showStageResult(2); return;
+  }
+  const q = questions[currentQ];
+  const allKor = questions.map(p=>p.kor);
+  const wrongOpts = shuffle(allKor.filter(k=>k!==q.kor)).slice(0,3);
+  const opts = shuffle([q.kor, ...wrongOpts]);
+  window._correctIndex = opts.indexOf(q.kor);
+  window._currentEng = q.eng; window._currentAnswer = q.kor;
+  window._selectedIdx = -1; window._submitted = false;
+
+  const isWide = window.innerWidth >= 600;
+  const pct = (currentQ/questions.length)*100;
+
+  if (isWide) {
+    // 태블릿: 지문 좌 / 선지 우
+    document.getElementById('quiz-content').innerHTML = `
+      <div class="stage-badge">1단계 · 문장 선택 (한국어)</div>
+      <div class="quiz-header">
+        <div class="timer-row">
+          <span class="q-num">${currentQ+1} / ${questions.length}</span>
+          <span id="timer-display">20초</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <p style="font-size:14px;color:var(--text2);margin-bottom:12px">영어 문장에 맞는 한국어 해석을 고르세요</p>
+      <div class="split-layout">
+        <div class="split-passage">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">영어 문장</div>
+          ${escHtml(q.eng)}
+        </div>
+        <div class="split-options">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:700">선지</div>
+          ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('en2ko')">제출</button>
+      <div id="feedback"></div>
+    `;
+  } else {
+    document.getElementById('quiz-content').innerHTML = `
+      <div class="stage-badge">1단계 · 문장 선택 (한국어)</div>
+      <div class="quiz-header">
+        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="question-text">한국어 뜻을 고르세요</div>
+      <div class="question-sub">${escHtml(q.eng)}</div>
+      <div class="options">
+        ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('en2ko')">제출</button>
+      <div id="feedback"></div>
+    `;
+  }
+  startPerQuestionTimer(20, () => {
+    if (window._submitted) return;
+    if (window._selectedIdx===-1) {
+      window._submitted=true;
+      wrongItems.push({sentence:q.eng, correct:q.kor});
+      document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(Number(b.dataset.idx)===window._correctIndex)b.classList.add('correct');});
+      document.getElementById('feedback').innerHTML='<div class="feedback-wrong">⏱ 시간 초과</div>';
+      currentQ++; setTimeout(showEn2KoQ, 2000);
+    } else { submitSentence('en2ko'); }
+  });
+}
+
+// ===== STAGE 2: 한국어 → 영어 (분할 레이아웃) =====
+function buildStage_Ko2En() {
+  const pairs = passageData.sentences||[];
+  if (!pairs.length) { stageResults[3]={score:0,total:0,wrong:[]}; currentStageIndex++; runNextStage(); return; }
+  questions = shuffle(pairs).slice(0, Math.min(pairs.length, 20));
+  showKo2EnQ();
+}
+
+function getSimilarOpts(correct, all, count) {
+  const pool = all.filter(o=>o!==correct);
+  const cWords = new Set(correct.toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/));
+  const cLen = correct.split(' ').length;
+  const scored = pool.map(opt=>{
+    const oWords = opt.toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/);
+    const common = oWords.filter(w=>w.length>3&&cWords.has(w)).length;
+    return {opt, sc:common*3-Math.abs(opt.split(' ').length-cLen)+Math.random()};
+  });
+  scored.sort((a,b)=>b.sc-a.sc);
+  return shuffle(scored.slice(0,count*2).map(s=>s.opt)).slice(0,count);
+}
+
+function showKo2EnQ() {
+  if (currentQ >= questions.length) {
+    stopTimer();
+    stageResults[3]={score, total:questions.length, wrong:wrongItems};
+    currentStageIndex++; showStageResult(3); return;
+  }
+  const q = questions[currentQ];
+  const allEng = questions.map(p=>p.eng);
+  const wrongOpts = getSimilarOpts(q.eng, allEng, 3);
+  const opts = shuffle([q.eng, ...wrongOpts]);
+  window._correctIndex = opts.indexOf(q.eng);
+  window._currentKor = q.kor; window._currentAnswer = q.eng;
+  window._selectedIdx = -1; window._submitted = false;
+
+  const isWide = window.innerWidth >= 600;
+  const pct = (currentQ/questions.length)*100;
+
+  if (isWide) {
+    document.getElementById('quiz-content').innerHTML = `
+      <div class="stage-badge">2단계 · 문장 선택 (영어)</div>
+      <div class="quiz-header">
+        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <p style="font-size:14px;color:var(--text2);margin-bottom:12px">한국어 해석에 맞는 영어 문장을 고르세요</p>
+      <div class="split-layout">
+        <div class="split-passage" style="color:var(--accent);font-weight:500">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">한국어 해석</div>
+          ${escHtml(q.kor)}
+        </div>
+        <div class="split-options">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:700">선지</div>
+          ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('ko2en')">제출</button>
+      <div id="feedback"></div>
+    `;
+  } else {
+    document.getElementById('quiz-content').innerHTML = `
+      <div class="stage-badge">2단계 · 문장 선택 (영어)</div>
+      <div class="quiz-header">
+        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="question-text">영어 문장을 고르세요</div>
+      <div class="korean-hint">${escHtml(q.kor)}</div>
+      <div class="options">
+        ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('ko2en')">제출</button>
+      <div id="feedback"></div>
+    `;
+  }
+  startPerQuestionTimer(20, () => {
+    if (window._submitted) return;
+    if (window._selectedIdx===-1) {
+      window._submitted=true;
+      wrongItems.push({kor:q.kor, eng:q.eng});
+      document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(Number(b.dataset.idx)===window._correctIndex)b.classList.add('correct');});
+      document.getElementById('feedback').innerHTML='<div class="feedback-wrong">⏱ 시간 초과</div>';
+      currentQ++; setTimeout(showKo2EnQ, 2000);
+    } else { submitSentence('ko2en'); }
+  });
+}
+
+function selectOpt(idx) {
+  document.querySelectorAll('.option').forEach(b=>b.classList.remove('selected'));
+  const btn = document.querySelector(`.option[data-idx="${idx}"]`);
+  if (btn) btn.classList.add('selected');
+  window._selectedIdx = idx;
+}
+
+function submitSentence(type) {
+  if (window._submitted) return;
+  const idx = window._selectedIdx;
+  if (idx===undefined||idx===-1) return;
+  window._submitted = true;
+  stopTimer();
+  document.querySelectorAll('.option').forEach(b=>b.disabled=true);
+  const correctIdx = window._correctIndex;
+  const btn = document.querySelector(`.option[data-idx="${idx}"]`);
+  if (idx===correctIdx) {
+    if(btn){btn.classList.add('correct');btn.classList.remove('selected');}
+    score++;
+    document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';
+  } else {
+    if(btn){btn.classList.add('wrong');btn.classList.remove('selected');}
+    document.querySelectorAll('.option').forEach(b=>{if(Number(b.dataset.idx)===correctIdx)b.classList.add('correct');});
+    if (type==='en2ko') wrongItems.push({sentence:window._currentEng, correct:window._currentAnswer});
+    else wrongItems.push({kor:window._currentKor, eng:window._currentAnswer});
+    document.getElementById('feedback').innerHTML='<div class="feedback-wrong">✗ 오답</div>';
+  }
+  currentQ++;
+  setTimeout(type==='en2ko'?showEn2KoQ:showKo2EnQ, 2000);
+}
+
+// ===== STAGE 3-1: 단어 객관식 =====
+function buildStage_WordMC() {
+  if (!wordsData.length) { stageResults[1]={score:0,total:0,wrong:[]}; currentStageIndex++; runNextStage(); return; }
+  const seen=new Set();
+  const uniq=wordsData.filter(w=>{const k=(w.word||'').toLowerCase().trim();if(!k||seen.has(k))return false;seen.add(k);return true;});
+  const allQ = uniq.map(w=>({question:w.word, answer:w.meaning, word:w.word}));
+  questions = shuffle(allQ).slice(0, Math.min(allQ.length, 12));
+  showWordMCQ();
+}
+
+function showWordMCQ() {
+  if (currentQ>=questions.length) {
+    stopTimer();
+    stageResults[1]={score, total:questions.length, wrong:wrongItems};
+    currentStageIndex++; showStageResult(1); return;
+  }
+  const q = questions[currentQ];
+  const pool = wordsData.map(w=>w.meaning);
+  const wrongOpts = shuffle(pool.filter(m=>m!==q.answer)).slice(0,3);
+  const opts = shuffle([q.answer, ...wrongOpts]);
+  window._correctIndex = opts.indexOf(q.answer);
+  window._currentWord = q.word; window._currentAnswer = q.answer;
+  window._selectedIdx = -1; window._submitted = false;
+
+  document.getElementById('quiz-content').innerHTML = `
+    <div class="stage-badge">3-1단계 · 단어 객관식</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">15초</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(currentQ/questions.length)*100}%"></div></div>
+    </div>
+    <div class="question-text">${escHtml(q.question)}</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:12px">한국어 뜻을 고르세요</p>
+    <div class="options">
+      ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectWordOpt(${i})">${escHtml(o)}</button>`).join('')}
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="submitWordMC()">제출</button>
+    <div id="feedback"></div>
+  `;
+  startPerQuestionTimer(15, () => {
+    if(window._submitted)return;
+    if(window._selectedIdx===-1){
+      window._submitted=true;
+      wrongItems.push({word:q.word,answer:q.answer});
+      document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(Number(b.dataset.idx)===window._correctIndex)b.classList.add('correct');});
+      document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${escHtml(q.answer)}</div>`;
+      currentQ++; setTimeout(showWordMCQ, 2000);
+    } else {submitWordMC();}
+  });
+}
+
+function selectWordOpt(idx) {
+  document.querySelectorAll('.option').forEach(b=>b.classList.remove('selected'));
+  const btn=document.querySelector(`.option[data-idx="${idx}"]`);
+  if(btn)btn.classList.add('selected');
+  window._selectedIdx=idx;
+}
+
+function submitWordMC() {
+  if(window._submitted)return;
+  const idx=window._selectedIdx;
+  if(idx===undefined||idx===-1)return;
+  window._submitted=true; stopTimer();
+  document.querySelectorAll('.option').forEach(b=>b.disabled=true);
+  const correctIdx=window._correctIndex;
+  const btn=document.querySelector(`.option[data-idx="${idx}"]`);
+  if(idx===correctIdx){if(btn){btn.classList.add('correct');btn.classList.remove('selected');}score++;document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';}
+  else{if(btn){btn.classList.add('wrong');btn.classList.remove('selected');}document.querySelectorAll('.option').forEach(b=>{if(Number(b.dataset.idx)===correctIdx)b.classList.add('correct');});wrongItems.push({word:window._currentWord,answer:window._currentAnswer});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">✗ 오답 · 정답: ${escHtml(window._currentAnswer)}</div>`;}
+  currentQ++; setTimeout(showWordMCQ, 2000);
+}
+
+// ===== STAGE 3-2: 단어 주관식 =====
+function buildStage_WordType() {
+  if(!wordsData.length){stageResults[6]={score:0,total:0,wrong:[]};currentStageIndex++;runNextStage();return;}
+  const seen=new Set();
+  const uniq=wordsData.filter(w=>{const k=(w.word||'').toLowerCase().trim();if(!k||seen.has(k))return false;seen.add(k);return true;});
+  questions=shuffle(uniq.map(w=>({question:w.meaning,answer:w.word,word:w.word}))).slice(0,Math.min(uniq.length,12));
+  showWordTypeQ();
+}
+
+function showWordTypeQ() {
+  if(currentQ>=questions.length){stopTimer();stageResults[6]={score,total:questions.length,wrong:wrongItems};currentStageIndex++;showStageResult(6);return;}
+  const q=questions[currentQ];
+  const hint=q.answer.charAt(0)+q.answer.slice(1).split('').map(()=>'_').join(' ');
+  document.getElementById('quiz-content').innerHTML=`
+    <div class="stage-badge">3-2단계 · 단어 주관식</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">30초</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(currentQ/questions.length)*100}%"></div></div>
+    </div>
+    <div class="question-text">영어 단어를 입력하세요</div>
+    <div class="question-sub" style="font-size:22px;font-weight:700;text-align:center">${escHtml(q.question)}</div>
+    <div style="text-align:center;font-size:22px;letter-spacing:5px;margin:16px 0;font-family:monospace;color:var(--accent)">${escHtml(hint)}</div>
+    <input type="text" id="word-input" placeholder="영어 단어 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="text-align:center;font-size:20px"/>
+    <button class="btn btn-primary" onclick="submitWordType()">제출</button>
+    <div id="feedback"></div>
+  `;
+  window._typingSubmitted=false;
+  setTimeout(()=>{const inp=document.getElementById('word-input');if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitWordType();});}},100);
+  startPerQuestionTimer(30,()=>{if(window._typingSubmitted)return;window._typingSubmitted=true;wrongItems.push({word:q.word,answer:q.answer,userAnswer:''});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${q.answer}</div>`;const inp=document.getElementById('word-input');if(inp)inp.disabled=true;currentQ++;setTimeout(showWordTypeQ,2000);});
+}
+
+function submitWordType() {
+  if(window._typingSubmitted)return;
+  const inp=document.getElementById('word-input');
+  if(!inp)return;
+  const user=(inp.value||'').trim();
+  if(!user){inp.focus();return;}
+  window._typingSubmitted=true; stopTimer();
+  const q=questions[currentQ];
+  inp.disabled=true;
+  if(user.toLowerCase()===q.answer.toLowerCase()){score++;document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';}
+  else{wrongItems.push({word:q.word,answer:q.answer,userAnswer:inp.value});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">✗ 오답 · 정답: ${q.answer}</div>`;}
+  currentQ++; setTimeout(showWordTypeQ, 2000);
+}
+
+// ===== STAGE 4-1: 빈칸 객관식 =====
+let blankQuestions=[], stage4Answers={}, stage4Options={}, isStage4b=false;
+
+const COMMON_WORDS = new Set(['the','is','was','are','were','am','be','been','being','will','would','can','could','may','might','must','shall','should','do','does','did','have','has','had','a','an','and','or','but','so','if','of','in','on','at','to','for','with','from','by','as','into','about','over','under','through','before','after','between','among','this','that','these','those','it','its','they','them','their','we','us','our','you','your','i','me','my','he','him','his','she','her','not','no','yes','too','very','just','only','also','when','where','what','who','why','how','which','all','any','some','many','much','more','most','few','less','one','two','three','each','every','both','up','down','out','back','here','there','now','again','still']);
+
+function buildStage_BlankMC() { isStage4b=false; buildStage4Internal(false); }
+function buildStage_BlankType() { isStage4b=true; let prev=[]; if(window._lastStage4_1&&window._lastStage4_1.book===selectedBook&&window._lastStage4_1.unit===selectedUnit)prev=window._lastStage4_1.words||[]; buildStage4Internal(true,prev); }
+
+function buildStage4Internal(skipToB, excludeWords) {
+  const wordList=wordsData.map(w=>w.word.toLowerCase());
+  const fullText=(passageData.sentences||[]).map(s=>s.eng).join(' ');
+  const words=fullText.split(/\s+/);
+  const usedWords=new Set();
+  const exclude=new Set((excludeWords||[]).map(w=>String(w).toLowerCase()));
+  let primary=[],fallback1=[],fallback2=[],fallback3=[];
+  words.forEach((w,i)=>{
+    const clean=w.replace(/[^a-zA-Z]/g,'').toLowerCase();
+    if(!wordList.includes(clean))return;
+    if(usedWords.has(clean))return;
+    usedWords.add(clean);
+    const entry={index:i,word:w,clean};
+    const isHard=clean.length>=6&&!COMMON_WORDS.has(clean);
+    const inExclude=exclude.has(clean);
+    if(isHard&&!inExclude)primary.push(entry);
+    else if(!isHard&&!inExclude)fallback1.push(entry);
+    else if(isHard&&inExclude)fallback2.push(entry);
+    else fallback3.push(entry);
+  });
+  let candidates=[...primary];
+  if(candidates.length<8)candidates=candidates.concat(fallback1);
+  if(candidates.length<8&&exclude.size>0){const need=Math.min(4,8-candidates.length);candidates=candidates.concat(shuffle(fallback2).slice(0,need));}
+  if(candidates.length<3)candidates=candidates.concat(fallback3);
+  let limit=candidates.length<=12?candidates.length:12;
+  if(candidates.length>=8&&limit<8)limit=8;
+  blankQuestions=shuffle(candidates).slice(0,limit).sort((a,b)=>a.index-b.index);
+  stage4Answers={}; timerLeft=0; passageData.fullText=fullText;
+  stage4Options={};
+  if(!skipToB){
+    const allWords=wordsData.map(w=>w.word.toLowerCase());
+    blankQuestions.forEach((q,i)=>{
+      const correct=q.clean;
+      const pool=allWords.filter(w=>w!==correct);
+      const scored=pool.map(w=>{let sc=0;if(w[0]===correct[0])sc+=3;if(Math.abs(w.length-correct.length)<=2)sc+=2;if(correct.length>=3&&w.length>=3&&w.slice(-3)===correct.slice(-3))sc+=3;sc+=Math.random();return{word:w,sc};});
+      scored.sort((a,b)=>b.sc-a.sc);
+      const topPool=scored.slice(0,Math.min(8,scored.length)).map(s=>s.word);
+      stage4Options[i]=shuffle([correct,...shuffle(topPool).slice(0,3)]);
+    });
+  }
+  if(!blankQuestions.length){stageResults[4]={score:0,total:0,wrong:[]};currentStageIndex++;runNextStage();return;}
+  renderBlankPassage();
+}
+
+function renderBlankPassage() {
+  const fullText=passageData.fullText||(passageData.sentences||[]).map(s=>s.eng).join(' ');
+  const words=fullText.split(/\s+/);
+  const blankMap={};
+  blankQuestions.forEach((q,i)=>blankMap[q.index]=i);
+  const displayed=words.map((w,i)=>{
+    if(blankMap[i]!==undefined){const num=blankMap[i]+1;const answered=stage4Answers[blankMap[i]];if(answered)return`<span class="blank-word answered" onclick="openBlankPopup(${blankMap[i]})">(${num}) <b>${answered}</b></span>`;return`<span class="blank-word" onclick="openBlankPopup(${blankMap[i]})">(${num}) ___</span>`;}
+    return w;
+  }).join(' ');
+  const answeredCount=Object.keys(stage4Answers).length;
+  const totalSecs=isStage4b?420:300;
+  const m=Math.floor(totalSecs/60);
+  document.getElementById('quiz-content').innerHTML=`
+    <div class="stage-badge">4${isStage4b?'-2':'-1'}단계 · 빈칸 ${isStage4b?'(주관식)':'(객관식)'}</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">답변 ${answeredCount} / ${blankQuestions.length}</span><span id="timer-display">${timerLeft>0?(Math.floor(timerLeft/60)+':'+String(timerLeft%60).padStart(2,'0')):(m+':00')}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(answeredCount/blankQuestions.length)*100}%"></div></div>
+    </div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:10px">빈칸 (N) 을 눌러서 답을 선택하세요</p>
+    <div class="passage-text">${displayed}</div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="submitStage4()" ${answeredCount<blankQuestions.length?'disabled':''}>제출</button>
+    <div id="blank-popup" class="blank-popup" style="display:none"></div>
+  `;
+  if(timerLeft===0)startTotalTimer(totalSecs,()=>submitStage4());
+}
+
+function openBlankPopup(idx) {
+  const q=blankQuestions[idx];
+  const popup=document.getElementById('blank-popup');
+  if(isStage4b){
+    const hint=q.clean.charAt(0)+q.clean.slice(1).split('').map(()=>'_').join(' ');
+    popup.style.display='block';
+    popup.innerHTML=`<div class="popup-inner">
+      <div style="font-weight:700;font-size:16px;margin-bottom:10px">(${idx+1}) 빈칸에 알맞은 단어</div>
+      <div style="text-align:center;font-size:20px;letter-spacing:5px;margin:12px 0;font-family:monospace;color:var(--accent)">${escHtml(hint)}</div>
+      <input type="text" id="popup-input" placeholder="영어 단어 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="text-align:center;font-size:17px;margin:6px 0 12px"/>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="margin:0" onclick="closePopup()">취소</button>
+        <button class="btn btn-primary" style="margin:0" onclick="submitBlankType(${idx})">확인</button>
+      </div>
+    </div>`;
+    setTimeout(()=>{const inp=document.getElementById('popup-input');if(inp){inp.focus();if(stage4Answers[idx])inp.value=stage4Answers[idx];inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitBlankType(idx);});}},100);
+  } else {
+    const opts=stage4Options[idx]||[];
+    popup.style.display='block';
+    popup.innerHTML=`<div class="popup-inner">
+      <div style="font-weight:700;font-size:16px;margin-bottom:12px">(${idx+1}) 빈칸에 알맞은 단어</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+        ${opts.map(o=>`<button class="option" onclick="submitBlankMC(${idx},'${escHtml(o)}')" ${stage4Answers[idx]===o?'style="border-color:var(--accent);background:var(--accent-light)"':''}>${escHtml(o)}</button>`).join('')}
+      </div>
+      <button class="btn btn-secondary" style="margin:0" onclick="closePopup()">취소</button>
+    </div>`;
+  }
+}
+
+function closePopup() { const p=document.getElementById('blank-popup'); if(p)p.style.display='none'; }
+
+function submitBlankMC(idx, answer) {
+  stage4Answers[idx]=answer; closePopup(); renderBlankPassage();
+  if(!window._lastStage4_1||window._lastStage4_1.book!==selectedBook||window._lastStage4_1.unit!==selectedUnit) window._lastStage4_1={book:selectedBook,unit:selectedUnit,words:[]};
+  if(!window._lastStage4_1.words.includes(answer.toLowerCase()))window._lastStage4_1.words.push(answer.toLowerCase());
+}
+
+function submitBlankType(idx) {
+  const inp=document.getElementById('popup-input');
+  if(!inp)return;
+  const val=(inp.value||'').trim();
+  if(!val){inp.focus();return;}
+  stage4Answers[idx]=val; closePopup(); renderBlankPassage();
+}
+
+function submitStage4() {
+  stopTimer();
+  let sc=0; const wrong=[];
+  blankQuestions.forEach((q,i)=>{
+    const ans=stage4Answers[i]||'';
+    if(ans.toLowerCase()===q.clean.toLowerCase())sc++;
+    else wrong.push({blankWord:q.clean, userAnswer:ans});
+  });
+  stageResults[4]={score:sc,total:blankQuestions.length,wrong};
+  if(!window._lastStage4_1||window._lastStage4_1.book!==selectedBook)window._lastStage4_1={book:selectedBook,unit:selectedUnit,words:blankQuestions.map(q=>q.clean)};
+  currentStageIndex++; showStageResult(4);
+}
+
+// ===== STAGE RESULT =====
+function showStageResult(stageKey) {
+  const r=stageResults[stageKey]||{score:0,total:0,wrong:[]};
+  const pct=r.total>0?Math.round(r.score/r.total*100):0;
+  const isLast=currentStageIndex>=stageQueue.length;
+  const wrongCount=r.wrong.length;
+  document.getElementById('quiz-content').innerHTML=`
+    <div style="text-align:center;padding:16px 0">
+      <div class="score-circle" style="background:${pct>=70?'var(--success)':'var(--danger)'}">
+        <span class="score-num">${pct}</span>
+        <span class="score-label">점</span>
+      </div>
+      <p style="color:var(--text2);font-size:15px">${r.score}/${r.total} 정답</p>
+      ${wrongCount>=3?'<p style="color:var(--danger);font-weight:700;margin-top:6px">재시험 대상 (오답 '+wrongCount+'개)</p>':''}
+    </div>
+    <button class="btn btn-primary" style="margin-top:8px" onclick="continueTest()">${isLast?'최종 결과 보기':'다음 단계 →'}</button>
+  `;
+  // 결과 저장
+  saveStageResult(stageKey, r);
+}
+
+function continueTest() { runNextStage(); }
+
+async function saveStageResult(stageKey, r) {
+  try {
+    const wrongContent = stageKey===1||stageKey===6
+      ? r.wrong.map(w=>w.word||'').filter(Boolean).join(', ')
+      : stageKey===4
+      ? r.wrong.map(w=>w.blankWord||'').filter(Boolean).join(', ')
+      : stageKey===2
+      ? r.wrong.map(w=>`${w.sentence}|||${w.correct}`).join('///')
+      : r.wrong.map(w=>`${w.kor}|||${w.eng}`).join('///');
+    await apiPost({
+      action:'saveResult', name:currentUser.name, id:currentUser.id,
+      book:selectedBook, unit:selectedUnit, passages:selectedPassages.join(','),
+      stage:INTERNAL_TO_SHEET[stageKey]||stageKey,
+      score:r.score, total:r.total, wrongContent, retry:'N'
+    });
+  } catch(e){}
+}
+
+// ===== FINISH ALL =====
+function finishAll() {
+  showScreen('screen-result');
+  let totalScore=0, totalQ=0;
+  const tabs=[]; const tabContents=[];
+  const stageInfoMap={
+    1:{label:'1',name:'문장선택(한국어)',key:2},
+    2:{label:'2',name:'문장선택(영어)',key:3},
+    3:{label:'3-1',name:'단어 객관식',key:1},
+    6:{label:'3-2',name:'단어 주관식',key:6},
+    4:{label:'4-1',name:'빈칸 객관식',key:4},
+    5:{label:'4-2',name:'빈칸 주관식',key:4}
+  };
+  stageQueue.forEach((s,i)=>{
+    const info=stageInfoMap[s]; if(!info)return;
+    const r=stageResults[info.key]||{score:0,total:0,wrong:[]};
+    totalScore+=r.score; totalQ+=r.total;
+    const isActive=i===0?'active':'';
+    tabs.push(`<span class="result-tab ${isActive}" id="rtab-${s}" onclick="showResultTab(${s})">${info.label}단계</span>`);
+    tabContents.push(`<div id="rcontent-${s}" style="${i>0?'display:none':''}">
+      <p style="font-size:15px;font-weight:700;margin-bottom:8px">${info.label}단계 · ${info.name}</p>
+      <p style="font-size:16px;color:${r.score/r.total>=0.7?'var(--success)':'var(--danger)'};font-weight:700;margin-bottom:10px">${r.score}/${r.total} (${r.total>0?Math.round(r.score/r.total*100):0}점)</p>
+      ${r.wrong.length?`<div style="font-size:13px;color:var(--danger);margin-top:4px">오답: ${r.wrong.length}개</div>`:'<div style="color:var(--success);font-size:14px">오답 없음 🎉</div>'}
+    </div>`);
+  });
+  const overallPct=totalQ>0?Math.round(totalScore/totalQ*100):0;
+  document.getElementById('result-content').innerHTML=`
+    <p style="color:var(--text2);font-size:14px;margin-bottom:12px">${escHtml(selectedBook)} · ${escHtml(selectedUnit)}</p>
+    <div class="result-score">
+      <div class="score-circle"><span class="score-num">${overallPct}</span><span class="score-label">점</span></div>
+      <p style="color:var(--text2);font-size:14px">${totalScore}/${totalQ} 정답</p>
+    </div>
+    <div class="result-tabs">${tabs.join('')}</div>
+    ${tabContents.join('')}
+  `;
+}
+
+function showResultTab(stage) {
+  document.querySelectorAll('.result-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('[id^=rcontent-]').forEach(c=>c.style.display='none');
+  document.getElementById('rtab-'+stage).classList.add('active');
+  document.getElementById('rcontent-'+stage).style.display='block';
+}
+
+// ===== MY RECORDS =====
+async function showMyRecords() {
+  const el=document.getElementById('records-content');
+  el.innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  showScreen('screen-records');
+  try {
+    const results=await api({action:'getResults',id:currentUser.id});
+    const todayStr=new Date().toLocaleDateString('ko-KR');
+    const my=(results||[]).filter(r=>String(r.id)===String(currentUser.id)&&String(r.date||'').includes(todayStr));
+    if(!my.length){el.innerHTML='<p style="color:var(--text2);text-align:center;padding:30px">오늘 응시한 기록이 없어요.</p>';return;}
+    const groups={};
+    my.forEach(r=>{const key=`${r.book}__${r.unit}`;if(!groups[key])groups[key]={book:r.book,unit:r.unit,items:[],latestDate:0};groups[key].items.push(r);const t=parseKoreanDate(r.date);if(t>groups[key].latestDate)groups[key].latestDate=t;});
+    let html='<div style="display:flex;flex-direction:column;gap:12px">';
+    Object.values(groups).sort((a,b)=>b.latestDate-a.latestDate).forEach(g=>{
+      const stages={};
+      g.items.forEach(r=>{const s=Number(r.stage);if(s===4){const k=String(r.retry).toUpperCase()==='Y'?'4-2':'4-1';if(!stages[k])stages[k]=[];stages[k].push(r);}else{if(!stages[s])stages[s]=[];stages[s].push(r);}});
+      const labels={1:'1단계',2:'2단계',3:'3-1단계',6:'3-2단계','4-1':'4-1단계','4-2':'4-2단계'};
+      const summary=Object.entries(stages).filter(([,v])=>v.length>0).map(([k,v])=>`${labels[k]||k} ${v.length}회`).join(' · ');
+      html+=`<div style="background:var(--surface2);border-radius:10px;padding:14px">
+        <div style="font-weight:700;font-size:16px">${escHtml(g.book)}</div>
+        <div style="font-size:14px;color:var(--text);margin-top:2px">${escHtml(g.unit)}</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:6px">${summary||'응시 기록 없음'}</div>
+      </div>`;
+    });
+    html+='</div>';
+    el.innerHTML=html;
+  } catch(e){el.innerHTML='<p style="color:var(--danger);text-align:center;padding:30px">기록을 불러오지 못했어요.</p>';}
+}
+
+// ===== TEACHER =====
+let currentTeacherTab='today';
+
+function teacherLogin() {
+  const id=document.getElementById('teacher-id').value.trim();
+  const pw=document.getElementById('teacher-pw').value.trim();
+  const msg=document.getElementById('teacher-msg');
+  if(id===ADMIN_ID&&pw===ADMIN_PW){showScreen('screen-teacher');loadTeacherData();}
+  else{msg.className='msg error';msg.textContent='아이디 또는 비밀번호가 틀렸습니다.';}
+}
+
+function switchTeacherTab(tab) {
+  currentTeacherTab=tab;
+  ['today','input','students'].forEach(t=>{
+    const btn=document.getElementById('tab-'+t);
+    if(!btn)return;
+    btn.className=t===tab?'btn btn-primary':'btn btn-secondary';
+    btn.style.cssText='padding:9px 16px;width:auto;font-size:14px;margin:0';
+  });
+  if(tab==='input'){showPassageInput().then(()=>updateApiKeyStatus());}
+  else if(tab==='students')showStudentManage();
+  else loadTeacherData();
+}
+
+async function loadTeacherData() {
+  const el=document.getElementById('teacher-content');
+  el.innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  try {
+    const results=await api({action:'getResults'});
+    const now=new Date();
+    const today=now.toLocaleDateString('ko-KR');
+    const yesterday=new Date(now-86400000).toLocaleDateString('ko-KR');
+    const filtered=results.filter(r=>{const d=String(r.date);return d.includes(today)||d.includes(yesterday);});
+    if(!filtered.length){el.innerHTML='<p style="color:var(--text2);text-align:center;padding:20px">어제·오늘 결과가 없어요</p>';return;}
+    const byStudent={};
+    filtered.forEach(r=>{
+      const key=`${r.id}__${r.book}__${r.unit}`;
+      if(!byStudent[key])byStudent[key]={name:r.name,id:r.id,school:r.school||'',book:r.book,unit:r.unit,stages:{1:[],2:[],3:[],6:[],'4-1':[],'4-2':[]}};
+      const s=Number(r.stage);
+      if(s===4){const k=String(r.retry).toUpperCase()==='Y'?'4-2':'4-1';byStudent[key].stages[k].push(r);}
+      else if(s===5){byStudent[key].stages['4-2'].push(r);}
+      else if(byStudent[key].stages[s])byStudent[key].stages[s].push(r);
+    });
+    const list=Object.values(byStudent).map(stu=>{
+      let latest=0;
+      [1,2,3,6,'4-1','4-2'].forEach(s=>(stu.stages[s]||[]).forEach(r=>{const t=parseKoreanDate(r.date);if(t>latest)latest=t;}));
+      stu._latest=latest; return stu;
+    }).sort((a,b)=>b._latest-a._latest);
+    window._kakaoTexts=list.map(s=>buildKakaoText(s));
+    let html='<p style="font-size:13px;color:var(--text2);margin-bottom:12px">어제·오늘 결과 (최근순)</p><div style="display:flex;flex-direction:column;gap:8px">';
+    list.forEach((stu,idx)=>{
+      const rows=[['1','1'],['2','2'],['3','3-1'],['6','3-2'],['4-1','4-1'],['4-2','4-2']].map(([key,label])=>{
+        const arr=stu.stages[key]; if(!arr||!arr.length)return'';
+        return`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px"><span style="font-size:12px;color:var(--text2);min-width:50px">${label}</span>${arr.map((r,i)=>`<span style="background:var(--accent-light);color:${(Number(r.total)-Number(r.score))>=3?'var(--danger)':'var(--accent)'};border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700">${i+1}회 ${r.score}/${r.total}</span>`).join('')}</div>`;
+      }).join('');
+      html+=`<div style="background:var(--surface2);border-radius:10px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer" onclick="toggleDetail('det-${idx}')">
+          <div><div style="font-weight:700;font-size:16px">${escHtml(stu.name)} <span style="font-size:12px;font-weight:400;color:var(--text2)">${escHtml(stu.school)}</span></div>
+          <div style="font-size:13px;color:var(--text2);margin-top:2px">${escHtml(stu.book)} · ${escHtml(stu.unit)}</div></div>
+          <span style="font-size:12px;color:var(--text2)">자세히 ▾</span>
+        </div>
+        ${rows}
+        <button onclick="event.stopPropagation();copyKakaoByIdx(${idx})" style="width:100%;padding:8px;background:#FEE500;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#000;margin-top:10px">카카오 복사</button>
+      </div>
+      <div id="det-${idx}" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:-4px"></div>`;
+    });
+    html+='</div>';
+    el.innerHTML=html;
+    // 승인 대기
+    const students=await api({action:'getStudents'});
+    const pending=students.filter(s=>s.approved!=='Y');
+    if(pending.length){el.innerHTML+=`<hr class="divider" style="margin-top:16px"><div style="font-weight:700;font-size:15px;margin-bottom:8px">승인 대기 (${pending.length}명)</div>${pending.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:6px"><span>${escHtml(s.name)} · ${escHtml(s.school||'')} (${escHtml(s.id)})</span><button class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:13px;margin:0" onclick="approveStudent('${s.id}')">승인</button></div>`).join('')}`;}
+  } catch(e){el.innerHTML='<p style="color:var(--danger)">오류가 발생했습니다.</p>';}
+}
+
+function toggleDetail(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { alert('API 키를 입력하세요.'); return; }
+  CLAUDE_API_KEY = key;
+  localStorage.setItem('hailey_claude_key', key);
+  updateApiKeyStatus();
+  document.getElementById('api-key-input').value = '';
+  alert('API 키가 저장됐어요!');
+}
+function updateApiKeyStatus() {
+  const el = document.getElementById('api-key-status');
+  if (!el) return;
+  if (CLAUDE_API_KEY) {
+    el.textContent = '설정됨';
+    el.style.color = 'var(--success)';
+  } else {
+    el.textContent = '미설정';
+    el.style.color = 'var(--danger)';
+  }
+}
+
+async function showPassageInput() {
+  let books=[];
+  try{books=await apiCached({action:'getBooks'});}catch(e){}
+  document.getElementById('teacher-content').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:14px;font-weight:700">Anthropic API 키</div>
+          <span id="api-key-status" style="font-size:12px;font-weight:700"></span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="flex:1;font-size:13px;margin:0" autocomplete="off"/>
+          <button onclick="saveApiKey()" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">저장</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px">사진 자동 추출 기능에 필요 · 직접 입력 시 불필요</div>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">교재</div>
+        <div class="select-wrap"><select id="input-book" style="margin:0" onchange="onBookSelectChange()">
+          <option value="">교재 선택</option>
+          ${books.map(b=>`<option value="${b}">${b}</option>`).join('')}
+          <option value="__NEW__">➕ 새 교재 추가</option>
+        </select></div>
+      </div>
+      <div id="new-book-wrap" style="display:none">
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">새 교재 이름</div>
+        <input type="text" id="input-new-book" placeholder="예: 수능특강 Light 영어" style="margin:0"/>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">Unit</div>
+        <input type="text" id="input-unit" placeholder="예: Unit 2" style="margin:0"/>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">지문 번호 <span style="font-size:12px;font-weight:400;color:var(--text2)">(여러 지문 구분 시 입력)</span></div>
+        <input type="text" id="input-passage-num" placeholder="예: 1 (또는 비워두기)" style="margin:0"/>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">배포 학교 선택 <span style="font-size:12px;font-weight:400;color:var(--text2)">(여러 개 선택 가능)</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px" id="school-dist-chips">
+          ${SCHOOLS.map(s=>`<button class="chip" data-school="${s}" onclick="toggleSchoolChip(this)">${s}</button>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">사진으로 자동 입력</div>
+        <div class="photo-area" onclick="document.getElementById('photo-input').click()">
+          <div style="font-size:15px;font-weight:700;color:var(--accent)">교재 사진 찍기</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:4px">AI가 지문+단어 자동 추출</div>
+        </div>
+        <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="processPhoto(this)"/>
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--text2);margin:4px 0">또는 직접 입력</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">영어 지문</div>
+        <textarea id="input-eng" rows="6" placeholder="영어 지문을 붙여넣으세요" style="margin:0;resize:vertical"></textarea>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">한국어 해석</div>
+        <textarea id="input-kor" rows="6" placeholder="한국어 해석을 붙여넣으세요" style="margin:0;resize:vertical"></textarea>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">단어 <span style="font-size:12px;font-weight:400;color:var(--text2)">(한 줄에 하나: 단어/뜻)</span></div>
+        <textarea id="input-words" rows="5" placeholder="diverse/다양한&#10;accommodate/수용하다&#10;conflict/갈등" style="margin:0;resize:vertical"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="processAndSave()">AI 문장 분리 후 저장</button>
+      <div id="input-msg" class="msg"></div>
+      <div id="preview-content"></div>
+    </div>
+  `;
+}
+
+function toggleSchoolChip(el){el.classList.toggle('active');}
+function onBookSelectChange(){const v=document.getElementById('input-book').value;document.getElementById('new-book-wrap').style.display=v==='__NEW__'?'block':'none';}
+
+async function processPhoto(input) {
+  const file=input.files[0]; if(!file)return;
+  const msg=document.getElementById('input-msg');
+  if(!CLAUDE_API_KEY){
+    msg.className='msg error';
+    msg.textContent='API 키가 설정되지 않았습니다. 위에서 API 키를 먼저 저장하세요.';
+    return;
+  }
+  msg.className='msg';msg.textContent='사진 분석 중... AI가 지문과 단어를 추출합니다';
+  try {
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('읽기 실패'));r.readAsDataURL(file);});
+    const response=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:4000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+          {type:'text',text:'이 교재 이미지에서 영어 지문과 한국어 해석, Words & Phrases 단어 목록을 추출해줘.\n\nJSON 형식으로만 응답:\n{"eng":"영어지문전체","kor":"한국어해석전체","words":[{"word":"영단어","meaning":"한국어뜻"}]}'}
+        ]}]
+      })
+    });
+    const data=await response.json();
+    if(data.error){throw new Error(data.error.message||'API 오류');}
+    const text=data.content[0].text.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(text);
+    if(parsed.eng)document.getElementById('input-eng').value=parsed.eng;
+    if(parsed.kor)document.getElementById('input-kor').value=parsed.kor;
+    if(parsed.words&&parsed.words.length)document.getElementById('input-words').value=parsed.words.map(w=>`${w.word}/${w.meaning}`).join('\n');
+    msg.className='msg success';msg.textContent=`추출 완료! 단어 ${parsed.words?.length||0}개`;
+  } catch(e){msg.className='msg error';msg.textContent='사진 분석 실패: '+e.message;}
+}
+
+async function processAndSave() {
+  let book=document.getElementById('input-book').value.trim();
+  const unit=document.getElementById('input-unit').value.trim();
+  const passageNum=document.getElementById('input-passage-num').value.trim();
+  const eng=document.getElementById('input-eng').value.trim();
+  const kor=document.getElementById('input-kor').value.trim();
+  const wordsRaw=document.getElementById('input-words').value.trim();
+  const schools=[...document.querySelectorAll('#school-dist-chips .chip.active')].map(c=>c.dataset.school);
+  const msg=document.getElementById('input-msg');
+  let isNewBook=false;
+  if(book==='__NEW__'){const nb=document.getElementById('input-new-book').value.trim();if(!nb){msg.className='msg error';msg.textContent='새 교재 이름을 입력하세요.';return;}book=nb;isNewBook=true;}
+  if(!book||!unit||!eng||!kor){msg.className='msg error';msg.textContent='교재, Unit, 영어 지문, 한국어 해석을 모두 입력하세요.';return;}
+  msg.className='msg';msg.textContent='AI가 문장을 분리하는 중...';
+  try {
+    const words=wordsRaw?wordsRaw.split('\n').map(line=>{const idx=line.indexOf('/');return{word:line.slice(0,idx)?.trim(),meaning:line.slice(idx+1)?.trim()};}).filter(w=>w.word&&w.meaning):[];
+    const result=await apiPost({action:'splitAndSave',book,unit,passageNum,eng,kor,words,schools,createNew:isNewBook?'Y':'N'});
+    if(result.result==='success'){
+      msg.className='msg success';msg.textContent=`완료! ${result.count}개 문장 저장됐어요.`;
+      if(isNewBook)Object.keys(cache).forEach(k=>delete cache[k]);
+      document.getElementById('preview-content').innerHTML=`<hr class="divider"><p style="font-weight:700;margin-bottom:10px">저장된 문장 (${result.sentences.length}개)</p>${result.sentences.map((s,i)=>`<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;font-size:14px"><p style="margin-bottom:4px">${i+1}. ${s.eng}</p><p style="color:var(--text2)">${s.kor}</p></div>`).join('')}`;
+    }else{msg.className='msg error';msg.textContent='오류: '+(result.msg||'알 수 없는 오류');}
+  }catch(e){msg.className='msg error';msg.textContent='오류: '+e.message;}
+}
+
+async function showStudentManage() {
+  const el=document.getElementById('teacher-content');
+  el.innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  try {
+    const students=await api({action:'getStudents'});
+    const pending=students.filter(s=>s.approved!=='Y');
+    const approved=students.filter(s=>s.approved==='Y');
+    el.innerHTML=`
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">승인 대기 (${pending.length}명)</div>
+      ${pending.length?pending.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:15px"><div><div style="font-weight:700">${escHtml(s.name)}</div><div style="font-size:13px;color:var(--text2)">${escHtml(s.school||'')} · ${escHtml(s.id)}</div></div><button class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:13px;margin:0" onclick="approveStudent('${s.id}')">승인</button></div>`).join(''):'<p style="color:var(--text2);font-size:14px;margin-bottom:12px">없음</p>'}
+      <hr class="divider">
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">승인된 학생 (${approved.length}명)</div>
+      ${approved.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:5px;font-size:14px;display:flex;justify-content:space-between"><span>${escHtml(s.name)} · ${escHtml(s.school||'')}</span><span style="color:var(--text2)">${escHtml(s.id)}</span></div>`).join('')}
+    `;
+  }catch(e){el.innerHTML='<p style="color:var(--danger)">오류가 발생했습니다.</p>';}
+}
+
+async function approveStudent(id){await api({action:'approve',id});if(currentTeacherTab==='students')showStudentManage();else loadTeacherData();}
+
+// ===== ADMIN =====
+async function loadAdminPage() {
+  document.getElementById('admin-content').innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  try {
+    const students=await api({action:'getStudents'});
+    const pending=students.filter(s=>s.approved!=='Y');
+    const approved=students.filter(s=>s.approved==='Y');
+    document.getElementById('admin-content').innerHTML=`
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">승인 대기 (${pending.length}명)</div>
+      ${pending.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px;background:var(--surface2);border-radius:8px;margin-bottom:6px"><div><div style="font-weight:700;font-size:15px">${escHtml(s.name)}</div><div style="font-size:13px;color:var(--text2)">${escHtml(s.school||'')} · ${escHtml(s.id)}</div></div><button class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:13px;margin:0" onclick="approveStudent('${s.id}')">승인</button></div>`).join('')||'<p class="small">없음</p>'}
+      <hr class="divider">
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">승인된 학생 (${approved.length}명)</div>
+      ${approved.map(s=>`<p class="small" style="padding:4px 0">${escHtml(s.name)} · ${escHtml(s.school||'')} (${escHtml(s.id)})</p>`).join('')}
+    `;
+  }catch(e){document.getElementById('admin-content').innerHTML='<p style="color:var(--danger)">오류가 발생했습니다.</p>';}
+}
+
+// ===== KAKAO =====
+function buildKakaoText(student) {
+  const now=new Date();
+  const dateStr=now.toLocaleString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const lines=[`[리딩 시험 결과]`,`이름: ${student.name}`,`학교: ${student.school||''}`,`날짜: ${dateStr}`,`교재: ${student.book} · ${student.unit}`,``];
+  [['1','1단계(문장-한국어)'],['2','2단계(문장-영어)'],['3','3-1단계(단어 객관식)'],['6','3-2단계(단어 주관식)'],['4-1','4-1단계(빈칸 객관식)'],['4-2','4-2단계(빈칸 주관식)']].forEach(([key,name])=>{
+    const arr=student.stages[key]; if(!arr||!arr.length)return;
+    arr.forEach((r,i)=>{const wrong=Number(r.total)-Number(r.score);lines.push(`${name}: ${r.score}/${r.total} · 오답 ${wrong}개`);});
+  });
+  return lines.join('\n');
+}
+function copyKakaoByIdx(idx){const t=(window._kakaoTexts||[])[idx];if(!t){alert('복사할 내용이 없어요.');return;}navigator.clipboard.writeText(t).then(()=>alert('복사됐어요! 카톡에 붙여넣기 하세요')).catch(()=>{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('복사됐어요!');});}
+
+// ===== UTILS =====
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function parseKoreanDate(s){if(!s)return 0;const str=String(s).trim();const d1=new Date(str).getTime();if(!isNaN(d1))return d1;const m=str.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?\s*(오전|오후)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);if(m){let h=parseInt(m[5],10);if(m[4]==='오후'&&h<12)h+=12;if(m[4]==='오전'&&h===12)h=0;return new Date(parseInt(m[1],10),parseInt(m[2],10)-1,parseInt(m[3],10),h,parseInt(m[6],10),m[7]?parseInt(m[7],10):0).getTime();}return 0;}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+</script>
+</body>
+</html>
