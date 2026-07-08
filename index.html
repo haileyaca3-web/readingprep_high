@@ -468,8 +468,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 <script>
 // ===== CONFIG =====
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZkqv6qkXM_SmwvuSDYcwjRbPWyujOlgxKVhLh9RNy252yoG7Wg78oBxlwOLlLA_ALxA/exec';
-const ADMIN_ID = 'haileyaca';
-const ADMIN_PW = 'hailey12';
+const ADMIN_ID = 'admin';
+const ADMIN_PW = 'hailey_admin_2026';
 
 // Anthropic API 키 (사진 자동 추출용 - 선생님 화면에서 설정 가능)
 let CLAUDE_API_KEY = localStorage.getItem('hailey_claude_key') || '';
@@ -1510,45 +1510,159 @@ async function loadTeacherData() {
     const yesterday=new Date(now-86400000).toLocaleDateString('ko-KR');
     const filtered=results.filter(r=>{const d=String(r.date);return d.includes(today)||d.includes(yesterday);});
     if(!filtered.length){el.innerHTML='<p style="color:var(--text2);text-align:center;padding:20px">어제·오늘 결과가 없어요</p>';return;}
+
     const byStudent={};
     filtered.forEach(r=>{
       const key=`${r.id}__${r.book}__${r.unit}`;
-      if(!byStudent[key])byStudent[key]={name:r.name,id:r.id,school:r.school||'',book:r.book,unit:r.unit,stages:{1:[],2:[],3:[],6:[],'4-1':[],'4-2':[]}};
+      if(!byStudent[key])byStudent[key]={name:r.name,id:r.id,school:r.school||'',book:r.book,unit:r.unit,passages:r.passages||'',stages:{1:[],2:[],3:[],6:[],'4-1':[],'4-2':[]}};
       const s=Number(r.stage);
       if(s===4){const k=String(r.retry).toUpperCase()==='Y'?'4-2':'4-1';byStudent[key].stages[k].push(r);}
       else if(s===5){byStudent[key].stages['4-2'].push(r);}
       else if(byStudent[key].stages[s])byStudent[key].stages[s].push(r);
     });
+
     const list=Object.values(byStudent).map(stu=>{
       let latest=0;
-      [1,2,3,6,'4-1','4-2'].forEach(s=>(stu.stages[s]||[]).forEach(r=>{const t=parseKoreanDate(r.date);if(t>latest)latest=t;}));
-      stu._latest=latest; return stu;
-    }).sort((a,b)=>b._latest-a._latest);
-    window._kakaoTexts=list.map(s=>buildKakaoText(s));
-    let html='<p style="font-size:13px;color:var(--text2);margin-bottom:12px">어제·오늘 결과 (최근순)</p><div style="display:flex;flex-direction:column;gap:8px">';
-    list.forEach((stu,idx)=>{
-      const rows=[['1','1'],['2','2'],['3','3-1'],['6','3-2'],['4-1','4-1'],['4-2','4-2']].map(([key,label])=>{
-        const arr=stu.stages[key]; if(!arr||!arr.length)return'';
-        return`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px"><span style="font-size:12px;color:var(--text2);min-width:50px">${label}</span>${arr.map((r,i)=>`<span style="background:var(--accent-light);color:${(Number(r.total)-Number(r.score))>=3?'var(--danger)':'var(--accent)'};border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700">${i+1}회 ${r.score}/${r.total}</span>`).join('')}</div>`;
-      }).join('');
-      html+=`<div style="background:var(--surface2);border-radius:10px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer" onclick="toggleDetail('det-${idx}')">
-          <div><div style="font-weight:700;font-size:16px">${escHtml(stu.name)} <span style="font-size:12px;font-weight:400;color:var(--text2)">${escHtml(stu.school)}</span></div>
-          <div style="font-size:13px;color:var(--text2);margin-top:2px">${escHtml(stu.book)} · ${escHtml(stu.unit)}</div></div>
-          <span style="font-size:12px;color:var(--text2)">자세히 ▾</span>
-        </div>
-        ${rows}
-        <button onclick="event.stopPropagation();copyKakaoByIdx(${idx})" style="width:100%;padding:8px;background:#FEE500;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#000;margin-top:10px">카카오 복사</button>
-      </div>
-      <div id="det-${idx}" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:-4px"></div>`;
+      let isToday=false;
+      [1,2,3,6,'4-1','4-2'].forEach(s=>(stu.stages[s]||[]).forEach(r=>{
+        const t=parseKoreanDate(r.date);
+        if(t>latest)latest=t;
+        if(String(r.date).includes(today))isToday=true;
+      }));
+      stu._latest=latest;
+      stu._isToday=isToday;
+      return stu;
+    }).sort((a,b)=>{
+      // 오늘 본 학생 먼저, 그 안에서 최근순
+      if(a._isToday&&!b._isToday)return -1;
+      if(!a._isToday&&b._isToday)return 1;
+      return b._latest-a._latest;
     });
+
+    window._kakaoTexts=list.map(s=>buildKakaoText(s));
+
+    let html=`<p style="font-size:13px;color:var(--text2);margin-bottom:12px">오늘 응시 ${list.filter(s=>s._isToday).length}명 · 어제 포함 ${list.length}명</p><div style="display:flex;flex-direction:column;gap:6px">`;
+
+    list.forEach((stu,idx)=>{
+      // 단계별 점수 요약 뱃지
+      const badges=[['1','1단계'],['2','2단계'],['3','3-1'],['6','3-2'],['4-1','4-1'],['4-2','4-2']].map(([key,label])=>{
+        const arr=stu.stages[key]; if(!arr||!arr.length)return'';
+        return arr.map((r,i)=>{
+          const wrong=Number(r.total)-Number(r.score);
+          const color=wrong>=3?'var(--danger)':'var(--accent)';
+          return`<span style="background:var(--accent-light);color:${color};border-radius:6px;padding:2px 9px;font-size:12px;font-weight:700">${label} ${r.score}/${r.total}</span>`;
+        }).join('');
+      }).join('');
+
+      const todayBadge=stu._isToday?`<span style="background:#dcfce7;color:var(--success);font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px">오늘</span>`:'';
+
+      html+=`
+      <div style="background:var(--surface2);border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <div style="padding:13px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="toggleStudentCard(${idx})">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:16px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+              ${escHtml(stu.name)}${todayBadge}
+              <span style="font-size:12px;font-weight:400;color:var(--text2)">${escHtml(stu.school)}</span>
+            </div>
+            <div style="font-size:13px;color:var(--text2);margin-top:3px">${escHtml(stu.book)} · ${escHtml(stu.unit)}${stu.passages?` · 지문 ${escHtml(stu.passages)}`:''}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${badges}</div>
+          </div>
+          <span id="arrow-${idx}" style="font-size:14px;color:var(--text2);margin-left:8px;flex-shrink:0">▾</span>
+        </div>
+        <div id="det-${idx}" style="display:none;border-top:1px solid var(--border);padding:14px;background:var(--surface)">
+          ${buildDetailHTML(stu)}
+          <button onclick="copyKakaoByIdx(${idx})" style="width:100%;padding:10px;background:#FEE500;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#000;margin-top:12px">카카오 복사</button>
+        </div>
+      </div>`;
+    });
+
     html+='</div>';
     el.innerHTML=html;
+
     // 승인 대기
     const students=await api({action:'getStudents'});
     const pending=students.filter(s=>s.approved!=='Y');
-    if(pending.length){el.innerHTML+=`<hr class="divider" style="margin-top:16px"><div style="font-weight:700;font-size:15px;margin-bottom:8px">승인 대기 (${pending.length}명)</div>${pending.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:6px"><span>${escHtml(s.name)} · ${escHtml(s.school||'')} (${escHtml(s.id)})</span><button class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:13px;margin:0" onclick="approveStudent('${s.id}')">승인</button></div>`).join('')}`;}
+    if(pending.length){
+      el.innerHTML+=`<hr class="divider" style="margin-top:16px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:8px">승인 대기 (${pending.length}명)</div>
+      ${pending.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
+        <div><div style="font-weight:500">${escHtml(s.name||s.id)}</div><div style="font-size:12px;color:var(--text2)">${escHtml(s.school||'')} · ${escHtml(s.id)}</div></div>
+        <button class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:13px;margin:0" onclick="approveStudent('${s.id}')">승인</button>
+      </div>`).join('')}`;
+    }
   } catch(e){el.innerHTML='<p style="color:var(--danger)">오류가 발생했습니다.</p>';}
+}
+
+function buildDetailHTML(stu) {
+  const stageInfo=[
+    ['1','1단계','문장선택(한국어)'],
+    ['2','2단계','문장선택(영어)'],
+    ['3','3-1단계','단어 객관식'],
+    ['6','3-2단계','단어 주관식'],
+    ['4-1','4-1단계','빈칸 객관식'],
+    ['4-2','4-2단계','빈칸 주관식']
+  ];
+  let html='';
+  stageInfo.forEach(([key,label,name])=>{
+    const arr=stu.stages[key];
+    if(!arr||!arr.length)return;
+    arr.forEach((r,i)=>{
+      const wrong=Number(r.total)-Number(r.score);
+      const pct=r.total>0?Math.round(r.score/r.total*100):0;
+      const color=pct>=70?'var(--success)':'var(--danger)';
+      // 오답 파싱
+      const wrongItems=parseWrongContent(r.wrongContent, key);
+      html+=`
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:700;font-size:14px">${label} · ${name}</span>
+          <span style="font-size:15px;font-weight:700;color:${color}">${r.score}/${r.total} (${pct}점)</span>
+        </div>
+        ${wrongItems.length?`
+          <div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:4px">오답 ${wrongItems.length}개</div>
+          ${wrongItems.map(w=>`
+            <div style="background:#fef2f2;border-left:3px solid var(--danger);border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:5px;font-size:13px;line-height:1.6">
+              ${w}
+            </div>
+          `).join('')}
+        `:'<div style="font-size:13px;color:var(--success)">오답 없음</div>'}
+      </div>`;
+    });
+  });
+  return html||'<p style="color:var(--text2);font-size:13px">결과 없음</p>';
+}
+
+function parseWrongContent(content, stageKey) {
+  if(!content||String(content).trim()==='')return[];
+  const s=String(content).trim();
+  // /// 구분자 있으면 → 문장 쌍
+  if(s.includes('///')){
+    return s.split('///').map(pair=>{
+      const parts=pair.split('|||');
+      if(parts.length>=2){
+        const eng=parts[0].trim();
+        const kor=parts[1].trim();
+        return`<b>영어:</b> ${escHtml(eng)}<br><b>한국어:</b> ${escHtml(kor)}`;
+      }
+      return escHtml(parts[0].trim());
+    }).filter(Boolean);
+  }
+  // ||| 구분자만 있으면 → 단어/뜻 쌍
+  if(s.includes('|||')){
+    const parts=s.split('|||');
+    return[`<b>${escHtml(parts[0]?.trim()||'')}</b> → ${escHtml(parts[1]?.trim()||'')}`];
+  }
+  // 콤마 구분 → 단어 목록
+  return s.split(',').map(w=>w.trim()).filter(Boolean).map(w=>`<b>${escHtml(w)}</b>`);
+}
+
+function toggleStudentCard(idx){
+  const det=document.getElementById('det-'+idx);
+  const arrow=document.getElementById('arrow-'+idx);
+  if(!det)return;
+  const isOpen=det.style.display!=='none';
+  det.style.display=isOpen?'none':'block';
+  if(arrow)arrow.textContent=isOpen?'▾':'▴';
 }
 
 function toggleDetail(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
@@ -1750,12 +1864,42 @@ async function loadAdminPage() {
 function buildKakaoText(student) {
   const now=new Date();
   const dateStr=now.toLocaleString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  const lines=[`[리딩 시험 결과]`,`이름: ${student.name}`,`학교: ${student.school||''}`,`날짜: ${dateStr}`,`교재: ${student.book} · ${student.unit}`,``];
+  const lines=[
+    `[헤일리올라 리딩 결과]`,
+    `이름: ${student.name}`,
+    `학교: ${student.school||''}`,
+    `날짜: ${dateStr}`,
+    `교재: ${student.book} · ${student.unit}${student.passages?' · 지문 '+student.passages:''}`,
+    ``
+  ];
   [['1','1단계(문장-한국어)'],['2','2단계(문장-영어)'],['3','3-1단계(단어 객관식)'],['6','3-2단계(단어 주관식)'],['4-1','4-1단계(빈칸 객관식)'],['4-2','4-2단계(빈칸 주관식)']].forEach(([key,name])=>{
     const arr=student.stages[key]; if(!arr||!arr.length)return;
-    arr.forEach((r,i)=>{const wrong=Number(r.total)-Number(r.score);lines.push(`${name}: ${r.score}/${r.total} · 오답 ${wrong}개`);});
+    arr.forEach((r,i)=>{
+      const wrong=Number(r.total)-Number(r.score);
+      const pct=r.total>0?Math.round(r.score/r.total*100):0;
+      lines.push(`${name}: ${r.score}/${r.total} (${pct}점) · 오답 ${wrong}개`);
+      if(r.wrongContent&&String(r.wrongContent).trim()){
+        const items=parseWrongContentPlain(r.wrongContent);
+        if(items.length)lines.push(`  틀린 것: ${items.join(', ')}`);
+      }
+    });
   });
   return lines.join('\n');
+}
+
+function parseWrongContentPlain(content) {
+  if(!content||String(content).trim()==='')return[];
+  const s=String(content).trim();
+  if(s.includes('///')){
+    return s.split('///').map(pair=>{
+      const parts=pair.split('|||');
+      return parts[0]?.trim()||'';
+    }).filter(Boolean);
+  }
+  if(s.includes('|||')){
+    return[s.split('|||')[0]?.trim()||''];
+  }
+  return s.split(',').map(w=>w.trim()).filter(Boolean);
 }
 function copyKakaoByIdx(idx){const t=(window._kakaoTexts||[])[idx];if(!t){alert('복사할 내용이 없어요.');return;}navigator.clipboard.writeText(t).then(()=>alert('복사됐어요! 카톡에 붙여넣기 하세요')).catch(()=>{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('복사됐어요!');});}
 
