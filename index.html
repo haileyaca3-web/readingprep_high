@@ -288,6 +288,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
       <button class="back-btn" onclick="showScreen('screen-login')">← 뒤로</button>
       <h2 style="margin:0">회원가입</h2>
     </div>
+    <input type="text" id="reg-name" placeholder="이름 (실명)"/>
     <input type="text" id="reg-id" placeholder="아이디 (영문+숫자)" autocomplete="off"/>
     <input type="password" id="reg-pw" placeholder="비밀번호" autocomplete="new-password"/>
     <div style="font-size:14px;font-weight:700;margin-bottom:10px;margin-top:4px">학교 / 학년 선택</div>
@@ -304,7 +305,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
     <p id="welcome-greeting" style="color:rgba(255,255,255,0.85);font-size:17px;font-weight:600;margin-bottom:24px"></p>
     <p style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:8px">책과 노트는 모두 정리해 주세요.</p>
     <p style="font-size:15px;color:rgba(255,255,255,0.7);margin-bottom:24px">선생님 앞에서 진행합니다.</p>
-    <button class="btn" onclick="proceedFromWelcome()" style="background:white;color:var(--accent);font-weight:700;margin-bottom:8px">시작하기</button>
+    <button class="btn" onclick="proceedFromWelcome()" style="background:white;color:var(--accent);font-weight:700;margin-bottom:8px">시작하기 (리딩)</button>
+    <button class="btn" onclick="startVocaFlow()" style="background:rgba(255,255,255,0.15);color:white;font-weight:700;border:1px solid rgba(255,255,255,0.4);margin-bottom:8px">단어 TEST</button>
     <button class="btn" onclick="showMyRecords()" style="background:transparent;color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.4);">내 기록 보기</button>
     <p id="welcome-cheer" style="color:rgba(255,255,255,0.5);font-size:13px;font-style:italic;margin-top:24px;min-height:18px"></p>
   </div>
@@ -456,6 +458,57 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   </div>
 </div>
 
+<!-- ===== VOCA: 단어장/유닛 선택 ===== -->
+<div id="screen-voca-select" class="screen">
+  <div class="card">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showScreen('screen-welcome')">← 뒤로</button>
+      <h2 style="margin:0">단어 TEST</h2>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px">단어장</div>
+    <div class="select-wrap">
+      <select id="voca-book" onchange="loadVocaUnits()">
+        <option value="">단어장을 선택하세요</option>
+      </select>
+    </div>
+    <div id="voca-unit-wrap" style="display:none">
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px">유닛 / 범위</div>
+      <div class="select-wrap">
+        <select id="voca-unit">
+          <option value="">유닛을 선택하세요</option>
+        </select>
+      </div>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin:14px 0 8px">단계 선택</div>
+    <div class="stage-grid">
+      <div class="stage-card selected" id="voca-stage-1" onclick="toggleVocaStage(1)"><div class="num">1</div><div class="label">영→한<br>객관식</div></div>
+      <div class="stage-card selected" id="voca-stage-2" onclick="toggleVocaStage(2)"><div class="num">2</div><div class="label">한→영<br>객관식</div></div>
+      <div class="stage-card" id="voca-stage-3" onclick="toggleVocaStage(3)"><div class="num">3</div><div class="label">한→영<br>타이핑</div></div>
+      <div class="stage-card" id="voca-stage-4" onclick="toggleVocaStage(4)"><div class="num">4</div><div class="label">철자배열<br>타이핑</div></div>
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text2);margin-bottom:14px">
+      ⏱ 1·2단계 10초/문항 · 3·4단계 40초/문항
+    </div>
+    <button class="btn btn-primary" onclick="startVocaTest()">시험 시작</button>
+    <div id="voca-msg" class="msg"></div>
+  </div>
+</div>
+
+<!-- ===== VOCA: 퀴즈 ===== -->
+<div id="screen-voca-quiz" class="screen">
+  <div class="card">
+    <div id="voca-quiz-content"></div>
+  </div>
+</div>
+
+<!-- ===== VOCA: 결과 ===== -->
+<div id="screen-voca-result" class="screen">
+  <div class="card">
+    <h2>단어 TEST 결과</h2>
+    <div id="voca-result-content"></div>
+  </div>
+</div>
+
 <!-- ===== ADMIN ===== -->
 <div id="screen-admin" class="screen">
   <div class="card">
@@ -468,8 +521,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 <script>
 // ===== CONFIG =====
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZkqv6qkXM_SmwvuSDYcwjRbPWyujOlgxKVhLh9RNy252yoG7Wg78oBxlwOLlLA_ALxA/exec';
-const ADMIN_ID = 'haileyaca';
-const ADMIN_PW = 'hailey12';
+const ADMIN_ID = 'admin';
+const ADMIN_PW = 'hailey_admin_2026';
 
 // Anthropic API 키 (사진 자동 추출용 - 선생님 화면에서 설정 가능)
 let CLAUDE_API_KEY = localStorage.getItem('hailey_claude_key') || '';
@@ -617,13 +670,20 @@ async function apiPost(data) {
   const res = await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify(data) });
   return res.json();
 }
+
+// 캐시: 메모리 캐시 + 만료 시간 (5분)
 const cache = {};
+const CACHE_TTL = 5 * 60 * 1000;
 async function apiCached(params) {
   const key = JSON.stringify(params);
-  if (cache[key]) return cache[key];
+  const now = Date.now();
+  if (cache[key] && (now - cache[key].ts) < CACHE_TTL) return cache[key].data;
   const result = await api(params);
-  cache[key] = result;
+  cache[key] = { data: result, ts: now };
   return result;
+}
+function clearCache(prefix) {
+  Object.keys(cache).forEach(k => { if (!prefix || k.includes(prefix)) delete cache[k]; });
 }
 
 // ===== AUTH =====
@@ -658,13 +718,13 @@ async function login() {
 async function register() {
   const btn = document.querySelector('#screen-register .btn-primary');
   if (btn && btn.disabled) return;
+  const name = document.getElementById('reg-name').value.trim();
   const id = document.getElementById('reg-id').value.trim();
   const pw = document.getElementById('reg-pw').value.trim();
   const schoolEl = document.querySelector('.school-chip.sel');
   const school = schoolEl ? schoolEl.dataset.school : '';
   const msg = document.getElementById('reg-msg');
-  const name = id; // 아이디를 이름으로 사용
-  if (!id||!pw) { msg.className='msg error'; msg.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  if (!name||!id||!pw) { msg.className='msg error'; msg.textContent='이름, 아이디, 비밀번호를 모두 입력하세요.'; return; }
   if (!school) { msg.className='msg error'; msg.textContent='학교/학년을 선택하세요.'; return; }
   if (btn) { btn.disabled=true; btn.textContent='신청 중...'; }
   msg.className='msg'; msg.textContent='가입 신청 중입니다...';
@@ -672,7 +732,7 @@ async function register() {
     const r = await apiPost({ action:'register', id, name, password:pw, school });
     if (r.result === 'success') {
       msg.className='msg success'; msg.textContent='가입 신청 완료! 선생님 승인 후 로그인 가능합니다.';
-      ['reg-id','reg-pw'].forEach(f=>document.getElementById(f).value='');
+      ['reg-name','reg-id','reg-pw'].forEach(f=>document.getElementById(f).value='');
     } else if (r.result === 'duplicate') {
       msg.className='msg error'; msg.textContent = r.msg||'이미 가입된 아이디입니다.';
     } else { msg.className='msg error'; msg.textContent='가입에 실패했습니다.'; }
@@ -1817,9 +1877,21 @@ async function processAndSave() {
     const words=wordsRaw?wordsRaw.split('\n').map(line=>{const idx=line.indexOf('/');return{word:line.slice(0,idx)?.trim(),meaning:line.slice(idx+1)?.trim()};}).filter(w=>w.word&&w.meaning):[];
     const result=await apiPost({action:'splitAndSave',book,unit,passageNum,eng,kor,words,schools,createNew:isNewBook?'Y':'N'});
     if(result.result==='success'){
-      msg.className='msg success';msg.textContent=`완료! ${result.count}개 문장 저장됐어요.`;
-      if(isNewBook)Object.keys(cache).forEach(k=>delete cache[k]);
-      document.getElementById('preview-content').innerHTML=`<hr class="divider"><p style="font-weight:700;margin-bottom:10px">저장된 문장 (${result.sentences.length}개)</p>${result.sentences.map((s,i)=>`<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;font-size:14px"><p style="margin-bottom:4px">${i+1}. ${s.eng}</p><p style="color:var(--text2)">${s.kor}</p></div>`).join('')}`;
+      const wordCount=result.words?.length||0;
+      const autoMsg=result.autoWords?` (단어 ${wordCount}개 자동 추출)`:`(단어 ${wordCount}개)`;
+      msg.className='msg success';msg.textContent=`완료! ${result.count}개 문장 저장 ${autoMsg}`;
+      if(isNewBook)clearCache();
+      // 저장된 문장 미리보기
+      let previewHtml=`<hr class="divider"><p style="font-weight:700;margin-bottom:10px">저장된 문장 (${result.sentences.length}개)</p>`;
+      previewHtml+=result.sentences.map((s,i)=>`<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;font-size:14px"><p style="margin-bottom:4px">${i+1}. ${escHtml(s.eng)}</p><p style="color:var(--text2)">${escHtml(s.kor)}</p></div>`).join('');
+      // 자동 추출 단어 미리보기
+      if(result.words&&result.words.length){
+        previewHtml+=`<p style="font-weight:700;margin:14px 0 8px">저장된 단어 (${result.words.length}개)${result.autoWords?' — AI 자동 추출':''}</p>`;
+        previewHtml+=`<div style="display:flex;flex-wrap:wrap;gap:6px">`;
+        previewHtml+=result.words.map(w=>`<div style="background:var(--accent-light);border:1px solid var(--accent-border);border-radius:8px;padding:6px 12px;font-size:13px"><b>${escHtml(w.word)}</b> <span style="color:var(--text2)">${escHtml(w.meaning)}</span></div>`).join('');
+        previewHtml+=`</div>`;
+      }
+      document.getElementById('preview-content').innerHTML=previewHtml;
     }else{msg.className='msg error';msg.textContent='오류: '+(result.msg||'알 수 없는 오류');}
   }catch(e){msg.className='msg error';msg.textContent='오류: '+e.message;}
 }
@@ -1907,6 +1979,314 @@ function copyKakaoByIdx(idx){const t=(window._kakaoTexts||[])[idx];if(!t){alert(
 function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function parseKoreanDate(s){if(!s)return 0;const str=String(s).trim();const d1=new Date(str).getTime();if(!isNaN(d1))return d1;const m=str.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?\s*(오전|오후)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);if(m){let h=parseInt(m[5],10);if(m[4]==='오후'&&h<12)h+=12;if(m[4]==='오전'&&h===12)h=0;return new Date(parseInt(m[1],10),parseInt(m[2],10)-1,parseInt(m[3],10),h,parseInt(m[6],10),m[7]?parseInt(m[7],10):0).getTime();}return 0;}
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// ============================================
+// ===== 단어 TEST (Voca) =====
+// ============================================
+let vocaBook='', vocaUnit='', vocaStages=[1,2], vocaWords=[], vocaQueue=[], vocaStageIdx=0;
+let vocaQuestions=[], vocaCurrentQ=0, vocaScore=0, vocaWrong=[], vocaStageResults={};
+let vocaScrambles={};
+
+async function startVocaFlow() {
+  showScreen('screen-voca-select');
+  const sel=document.getElementById('voca-book');
+  sel.innerHTML='<option value="">불러오는 중...</option>';
+  try {
+    const books=await apiCached({action:'getVocaBooks'});
+    sel.innerHTML='<option value="">단어장을 선택하세요</option>';
+    (books||[]).forEach(b=>{const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);});
+  } catch(e){sel.innerHTML='<option value="">불러오기 실패</option>';}
+}
+
+async function loadVocaUnits() {
+  vocaBook=document.getElementById('voca-book').value;
+  const wrap=document.getElementById('voca-unit-wrap');
+  const sel=document.getElementById('voca-unit');
+  if(!vocaBook){wrap.style.display='none';return;}
+  sel.innerHTML='<option value="">불러오는 중...</option>';
+  wrap.style.display='block';
+  try {
+    const units=await apiCached({action:'getVocaUnits',book:vocaBook});
+    sel.innerHTML='<option value="">유닛을 선택하세요</option>';
+    (units||[]).forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;sel.appendChild(o);});
+  } catch(e){sel.innerHTML='<option value="">불러오기 실패</option>';}
+}
+
+function toggleVocaStage(n){
+  const card=document.getElementById('voca-stage-'+n);
+  const idx=vocaStages.indexOf(n);
+  if(idx===-1){vocaStages.push(n);card.classList.add('selected');}
+  else{vocaStages.splice(idx,1);card.classList.remove('selected');}
+}
+
+async function startVocaTest() {
+  vocaUnit=document.getElementById('voca-unit').value;
+  const msg=document.getElementById('voca-msg');
+  if(!vocaBook||!vocaUnit){msg.className='msg error';msg.textContent='단어장과 유닛을 선택하세요.';return;}
+  if(!vocaStages.length){msg.className='msg error';msg.textContent='단계를 하나 이상 선택하세요.';return;}
+  vocaQueue=[...vocaStages].sort((a,b)=>a-b);
+  vocaStageIdx=0; vocaStageResults={};
+  showScreen('screen-voca-quiz');
+  quizActive=true;
+  document.getElementById('voca-quiz-content').innerHTML='<div class="loader"><div class="spinner"></div>단어 불러오는 중...</div>';
+  try {
+    vocaWords=await apiCached({action:'getVocaWords',book:vocaBook,unit:vocaUnit});
+    if(!vocaWords||!vocaWords.length){
+      document.getElementById('voca-quiz-content').innerHTML='<p style="color:var(--danger);text-align:center;padding:20px">단어 데이터가 없습니다.</p>';
+      return;
+    }
+    vocaScrambles={};
+    vocaWords.forEach((w,i)=>{vocaScrambles[i]=scrambleWord(w.word);});
+    runNextVocaStage();
+  } catch(e){document.getElementById('voca-quiz-content').innerHTML='<p style="color:var(--danger)">데이터를 불러오지 못했습니다.</p>';}
+}
+
+function scrambleWord(word){
+  const chars=word.split('');
+  let scrambled;
+  do{scrambled=shuffle([...chars]).join('');}while(scrambled===word&&word.length>1);
+  return scrambled;
+}
+
+function runNextVocaStage() {
+  if(vocaStageIdx>=vocaQueue.length){finishVocaAll();return;}
+  const stage=vocaQueue[vocaStageIdx];
+  vocaScore=0; vocaWrong=[]; vocaCurrentQ=0;
+  // 최대 20개
+  const seen=new Set();
+  const uniq=vocaWords.filter(w=>{const k=(w.word||'').toLowerCase().trim();if(!k||seen.has(k))return false;seen.add(k);return true;});
+  vocaQuestions=shuffle(uniq.map((w,idx)=>({...w,_origIdx:vocaWords.indexOf(w)}))).slice(0,Math.min(uniq.length,20));
+  if(stage===1)showVocaMC('en2ko');
+  else if(stage===2)showVocaMC('ko2en');
+  else if(stage===3)showVocaType();
+  else if(stage===4)showVocaScramble();
+}
+
+// Stage 1,2: 객관식
+function showVocaMC(type) {
+  if(vocaCurrentQ>=vocaQuestions.length){
+    stopTimer();
+    vocaStageResults[type==='en2ko'?1:2]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};
+    vocaStageIdx++; showVocaStageResult(type==='en2ko'?1:2); return;
+  }
+  const q=vocaQuestions[vocaCurrentQ];
+  const question=type==='en2ko'?q.word:q.meaning;
+  const answer=type==='en2ko'?q.meaning:q.word;
+  const pool=vocaWords.map(w=>type==='en2ko'?w.meaning:w.word);
+  const wrongOpts=shuffle(pool.filter(m=>m!==answer)).slice(0,3);
+  const opts=shuffle([answer,...wrongOpts]);
+  window._vocaCorrectIdx=opts.indexOf(answer);
+  window._vocaAnswer=answer; window._vocaWord=q.word; window._vocaMeaning=q.meaning;
+  window._vocaSelectedIdx=-1; window._vocaSubmitted=false;
+
+  document.getElementById('voca-quiz-content').innerHTML=`
+    <div class="stage-badge">${type==='en2ko'?'1단계 · 영→한':'2단계 · 한→영'}</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">${vocaCurrentQ+1} / ${vocaQuestions.length}</span><span id="timer-display">10초</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(vocaCurrentQ/vocaQuestions.length)*100}%"></div></div>
+    </div>
+    <div class="question-text" style="text-align:center;font-size:22px;padding:16px 0">${escHtml(question)}</div>
+    <div class="options">
+      ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectVocaOpt(${i})">${escHtml(o)}</button>`).join('')}
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="submitVocaMC('${type}')">제출</button>
+    <div id="feedback"></div>
+  `;
+  startPerQuestionTimer(10,()=>{
+    if(window._vocaSubmitted)return;
+    if(window._vocaSelectedIdx===-1){
+      window._vocaSubmitted=true;
+      vocaWrong.push({word:q.word,meaning:q.meaning});
+      document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(Number(b.dataset.idx)===window._vocaCorrectIdx)b.classList.add('correct');});
+      document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${escHtml(answer)}</div>`;
+      vocaCurrentQ++; setTimeout(()=>showVocaMC(type),1800);
+    } else {submitVocaMC(type);}
+  });
+}
+
+function selectVocaOpt(idx){
+  document.querySelectorAll('.option').forEach(b=>b.classList.remove('selected'));
+  const btn=document.querySelector(`.option[data-idx="${idx}"]`);
+  if(btn)btn.classList.add('selected');
+  window._vocaSelectedIdx=idx;
+}
+
+function submitVocaMC(type){
+  if(window._vocaSubmitted)return;
+  const idx=window._vocaSelectedIdx;
+  if(idx===undefined||idx===-1)return;
+  window._vocaSubmitted=true; stopTimer();
+  document.querySelectorAll('.option').forEach(b=>b.disabled=true);
+  const btn=document.querySelector(`.option[data-idx="${idx}"]`);
+  if(idx===window._vocaCorrectIdx){if(btn){btn.classList.add('correct');btn.classList.remove('selected');}vocaScore++;document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';}
+  else{if(btn){btn.classList.add('wrong');btn.classList.remove('selected');}document.querySelectorAll('.option').forEach(b=>{if(Number(b.dataset.idx)===window._vocaCorrectIdx)b.classList.add('correct');});vocaWrong.push({word:window._vocaWord,meaning:window._vocaMeaning});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">✗ 오답 · 정답: ${escHtml(window._vocaAnswer)}</div>`;}
+  vocaCurrentQ++; setTimeout(()=>showVocaMC(type),1800);
+}
+
+// Stage 3: 한→영 타이핑
+function showVocaType() {
+  if(vocaCurrentQ>=vocaQuestions.length){
+    stopTimer();
+    vocaStageResults[3]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};
+    vocaStageIdx++; showVocaStageResult(3); return;
+  }
+  const q=vocaQuestions[vocaCurrentQ];
+  document.getElementById('voca-quiz-content').innerHTML=`
+    <div class="stage-badge">3단계 · 한→영 타이핑</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">${vocaCurrentQ+1} / ${vocaQuestions.length}</span><span id="timer-display">40초</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(vocaCurrentQ/vocaQuestions.length)*100}%"></div></div>
+    </div>
+    <div class="question-text">영어 단어를 입력하세요</div>
+    <div class="question-sub" style="font-size:22px;font-weight:700;text-align:center">${escHtml(q.meaning)}</div>
+    <input type="text" id="voca-input" placeholder="영어 단어 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="text-align:center;font-size:20px"/>
+    <button class="btn btn-primary" onclick="submitVocaType()">제출</button>
+    <div id="feedback"></div>
+  `;
+  window._vocaSubmitted=false;
+  setTimeout(()=>{const inp=document.getElementById('voca-input');if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitVocaType();});}},100);
+  startPerQuestionTimer(40,()=>{if(window._vocaSubmitted)return;window._vocaSubmitted=true;vocaWrong.push({word:q.word,meaning:q.meaning});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${q.word}</div>`;const inp=document.getElementById('voca-input');if(inp)inp.disabled=true;vocaCurrentQ++;setTimeout(showVocaType,1800);});
+}
+
+function submitVocaType(){
+  if(window._vocaSubmitted)return;
+  const inp=document.getElementById('voca-input');
+  if(!inp)return;
+  const user=(inp.value||'').trim();
+  if(!user){inp.focus();return;}
+  window._vocaSubmitted=true; stopTimer();
+  const q=vocaQuestions[vocaCurrentQ];
+  inp.disabled=true;
+  // 괄호 생략 허용: 괄호 안 내용 제거하고 비교
+  const clean=s=>s.toLowerCase().replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+  if(clean(user)===clean(q.word)||user.toLowerCase()===q.word.toLowerCase()){vocaScore++;document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';}
+  else{vocaWrong.push({word:q.word,meaning:q.meaning,userAnswer:inp.value});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">✗ 오답 · 정답: ${q.word}</div>`;}
+  vocaCurrentQ++; setTimeout(showVocaType,1800);
+}
+
+// Stage 4: Unscramble
+function showVocaScramble() {
+  if(vocaCurrentQ>=vocaQuestions.length){
+    stopTimer();
+    vocaStageResults[4]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};
+    vocaStageIdx++; showVocaStageResult(4); return;
+  }
+  const q=vocaQuestions[vocaCurrentQ];
+  const scrambled=scrambleWord(q.word);
+  document.getElementById('voca-quiz-content').innerHTML=`
+    <div class="stage-badge">4단계 · 철자 배열</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">${vocaCurrentQ+1} / ${vocaQuestions.length}</span><span id="timer-display">40초</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(vocaCurrentQ/vocaQuestions.length)*100}%"></div></div>
+    </div>
+    <div class="question-text">철자를 바르게 배열하세요</div>
+    <div class="question-sub" style="text-align:center"><span style="color:var(--text2);font-size:14px">뜻: ${escHtml(q.meaning)}</span></div>
+    <div style="text-align:center;font-size:26px;letter-spacing:8px;margin:16px 0;font-family:monospace;color:var(--accent);font-weight:700">${escHtml(scrambled.toUpperCase())}</div>
+    <input type="text" id="voca-input" placeholder="영어 단어 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="text-align:center;font-size:20px"/>
+    <button class="btn btn-primary" onclick="submitVocaScramble()">제출</button>
+    <div id="feedback"></div>
+  `;
+  window._vocaSubmitted=false;
+  setTimeout(()=>{const inp=document.getElementById('voca-input');if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitVocaScramble();});}},100);
+  startPerQuestionTimer(40,()=>{if(window._vocaSubmitted)return;window._vocaSubmitted=true;vocaWrong.push({word:q.word,meaning:q.meaning});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${q.word}</div>`;const inp=document.getElementById('voca-input');if(inp)inp.disabled=true;vocaCurrentQ++;setTimeout(showVocaScramble,1800);});
+}
+
+function submitVocaScramble(){
+  if(window._vocaSubmitted)return;
+  const inp=document.getElementById('voca-input');
+  if(!inp)return;
+  const user=(inp.value||'').trim();
+  if(!user){inp.focus();return;}
+  window._vocaSubmitted=true; stopTimer();
+  const q=vocaQuestions[vocaCurrentQ];
+  inp.disabled=true;
+  if(user.toLowerCase()===q.word.toLowerCase()){vocaScore++;document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';}
+  else{vocaWrong.push({word:q.word,meaning:q.meaning,userAnswer:inp.value});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">✗ 오답 · 정답: ${q.word}</div>`;}
+  vocaCurrentQ++; setTimeout(showVocaScramble,1800);
+}
+
+function showVocaStageResult(stage){
+  const r=vocaStageResults[stage]||{score:0,total:0,wrong:[]};
+  const pct=r.total>0?Math.round(r.score/r.total*100):0;
+  const isLast=vocaStageIdx>=vocaQueue.length;
+  document.getElementById('voca-quiz-content').innerHTML=`
+    <div style="text-align:center;padding:16px 0">
+      <div class="score-circle" style="background:${pct>=70?'var(--success)':'var(--danger)'}">
+        <span class="score-num">${pct}</span><span class="score-label">점</span>
+      </div>
+      <p style="color:var(--text2);font-size:15px">${r.score}/${r.total} 정답</p>
+    </div>
+    <button class="btn btn-primary" style="margin-top:8px" onclick="runNextVocaStage()">${isLast?'최종 결과 보기':'다음 단계 →'}</button>
+  `;
+  saveVocaResult(stage,r);
+}
+
+async function saveVocaResult(stage,r){
+  try {
+    const wrongContent=r.wrong.map(w=>`${w.word}(${w.meaning})`).join(', ');
+    await apiPost({
+      action:'saveVocaResult', name:currentUser.name, id:currentUser.id,
+      school:currentUser.school||'', book:vocaBook, unit:vocaUnit,
+      stage, score:r.score, total:r.total, wrongContent
+    });
+  } catch(e){}
+}
+
+function finishVocaAll(){
+  showScreen('screen-voca-result');
+  quizActive=false;
+  let totalScore=0,totalQ=0;
+  const allWrong=[];
+  Object.entries(vocaStageResults).forEach(([s,r])=>{
+    totalScore+=r.score; totalQ+=r.total;
+    r.wrong.forEach(w=>{if(!allWrong.find(x=>x.word===w.word))allWrong.push(w);});
+  });
+  const pct=totalQ>0?Math.round(totalScore/totalQ*100):0;
+  window._vocaAllWrong=allWrong;
+  document.getElementById('voca-result-content').innerHTML=`
+    <p style="color:var(--text2);font-size:14px;margin-bottom:12px">${escHtml(vocaBook)} · ${escHtml(vocaUnit)}</p>
+    <div class="result-score">
+      <div class="score-circle"><span class="score-num">${pct}</span><span class="score-label">점</span></div>
+      <p style="color:var(--text2);font-size:14px">${totalScore}/${totalQ} 정답</p>
+    </div>
+    ${allWrong.length?`
+      <div style="margin-top:14px">
+        <p style="font-weight:700;font-size:15px;margin-bottom:8px">틀린 단어 (${allWrong.length}개)</p>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          ${allWrong.map(w=>`<div style="background:#fef2f2;border-left:3px solid var(--danger);border-radius:0 8px 8px 0;padding:8px 12px;font-size:14px"><b>${escHtml(w.word)}</b> — ${escHtml(w.meaning)}</div>`).join('')}
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="retryVocaWrong()">틀린 단어만 재시험</button>
+    `:'<p style="color:var(--success);text-align:center;margin-top:14px">모두 맞았어요!</p>'}
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="copyVocaKakao()">카카오 복사</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-voca-select')">다른 단어장</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-welcome')">홈으로</button>
+  `;
+}
+
+function retryVocaWrong(){
+  const wrong=window._vocaAllWrong||[];
+  if(!wrong.length)return;
+  vocaWords=wrong.map(w=>({word:w.word,meaning:w.meaning}));
+  vocaQueue=[1,2]; vocaStageIdx=0; vocaStageResults={};
+  showScreen('screen-voca-quiz');
+  quizActive=true;
+  runNextVocaStage();
+}
+
+function copyVocaKakao(){
+  const now=new Date();
+  const dateStr=now.toLocaleString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const lines=[`[단어 TEST 결과]`,`이름: ${currentUser.name}`,`날짜: ${dateStr}`,`단어장: ${vocaBook} · ${vocaUnit}`,``];
+  Object.entries(vocaStageResults).forEach(([s,r])=>{
+    const names={1:'1단계(영→한)',2:'2단계(한→영)',3:'3단계(타이핑)',4:'4단계(철자배열)'};
+    lines.push(`${names[s]||s}: ${r.score}/${r.total}`);
+  });
+  const wrong=window._vocaAllWrong||[];
+  if(wrong.length){lines.push('');lines.push(`틀린 단어: ${wrong.map(w=>w.word).join(', ')}`);}
+  const text=lines.join('\n');
+  navigator.clipboard.writeText(text).then(()=>alert('복사됐어요!')).catch(()=>{const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('복사됐어요!');});
+}
 </script>
 </body>
 </html>
