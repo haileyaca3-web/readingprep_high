@@ -798,9 +798,7 @@ async function loadBooks() {
       o.value = b; o.textContent = b;
       sel.appendChild(o);
     });
-    if (currentUser && currentUser.school) {
-      document.getElementById('book-school-notice').textContent = `📌 ${currentUser.school} 범위 교재만 표시됩니다`;
-    }
+
   } catch(e) {}
 }
 
