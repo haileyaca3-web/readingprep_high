@@ -226,9 +226,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .warn-banner.active { display:block; }
 @keyframes slideDown { from { transform:translateY(-100%); } to { transform:translateY(0); } }
 
-/* Notice */
-.notice { background:var(--accent-light); border:1px solid var(--accent-border); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--accent); margin-bottom:12px; border-left:3px solid var(--accent); }
-
 /* Tag */
 .tag { display:inline-block; font-size:12px; padding:3px 10px; border-radius:20px; font-weight:700; }
 .tag-pre { background:#FEF3C7; color:#92400E; }
@@ -253,7 +250,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 
 <!-- SECURITY OVERLAY -->
 <div class="lock-overlay" id="lock-overlay">
-  <div class="lock-icon" style="font-size:48px;margin-bottom:16px">&#x1F512;</div>
+  <div class="lock-icon">&#x1F512;</div>
   <div class="lock-title" id="lock-title">시험이 종료되었습니다</div>
   <div class="lock-msg" id="lock-msg">선생님께 문의하세요.</div>
   <div class="lock-warn" id="lock-sub"></div>
@@ -338,7 +335,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 <div id="screen-book" class="screen">
   <div class="card">
     <h2>교재 · 지문 선택</h2>
-    <div id="book-school-notice" class="notice"></div>
     <div style="font-size:14px;font-weight:700;margin-bottom:6px">교재</div>
     <div class="select-wrap">
       <select id="book-select" onchange="loadUnits()">
@@ -524,32 +520,21 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZkqv6qkXM_SmwvuSDY
 const ADMIN_ID = 'haileyaca';
 const ADMIN_PW = 'hailey12';
 
-// Anthropic API 키 (사진 자동 추출용 - 선생님 화면에서 설정 가능)
 let CLAUDE_API_KEY = localStorage.getItem('hailey_claude_key') || '';
 
-// 학교 목록 (선생님이 지문 배포 시 사용 + 회원가입 시 선택)
 const SCHOOLS = [
-  '순천여고 1학년',
-  '순천여고 2학년',
-  '금당고 1학년',
-  '금당고 2학년',
-  '매여고 2학년',
-  '효천고 2학년',
-  '제일고 1학년',
-  '순천고 1학년',
-  '강남여고 1학년',
-  '강남여고 2학년'
+  '순천여고 1학년','순천여고 2학년','금당고 1학년','금당고 2학년',
+  '매여고 2학년','효천고 2학년','제일고 1학년','순천고 1학년',
+  '강남여고 1학년','강남여고 2학년'
 ];
 
-// ===== STAGE MAPPING =====
 const INTERNAL_TO_SHEET = {1:3, 2:1, 3:2, 4:4, 5:5, 6:6};
 const STAGE_LABELS = { 1:'문장선택(한국어)', 2:'문장선택(영어)', 3:'단어 객관식', 4:'빈칸 객관식', 5:'빈칸 주관식', 6:'단어 주관식' };
 
-// ===== STATE =====
 let currentUser = null;
 let selectedBook = '';
 let selectedUnit = '';
-let selectedPassages = []; // 선택한 지문 번호 배열
+let selectedPassages = [];
 let selectedStages = [];
 let stageQueue = [];
 let currentStageIndex = 0;
@@ -563,17 +548,13 @@ let score = 0;
 let wrongItems = [];
 let retryFlags = {};
 
-// Security
 let warnCount = 0;
 let quizActive = false;
 let multiTabLocked = false;
-
-// Timer
 let timerInterval = null;
 let timerLeft = 0;
 
 // ===== SECURITY =====
-// 1. 앱 이탈 감지 (visibilitychange)
 document.addEventListener('visibilitychange', () => {
   if (!quizActive || multiTabLocked) return;
   if (document.hidden) {
@@ -588,28 +569,18 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// 2. 다중 탭/창 감지 (BroadcastChannel)
 let bc;
 try {
   bc = new BroadcastChannel('hailey_reading_hs');
   bc.onmessage = (e) => {
-    if (e.data === 'ping' && quizActive) {
-      bc.postMessage('pong');
-    }
-    if (e.data === 'pong' && quizActive) {
-      triggerLock('복제 화면 감지됨', '다른 탭이나 창에서 이 앱이 열려 있습니다.\n시험이 즉시 종료됩니다.', '선생님께 자동 통보됩니다');
-    }
+    if (e.data === 'ping' && quizActive) bc.postMessage('pong');
+    if (e.data === 'pong' && quizActive) triggerLock('복제 화면 감지됨', '다른 탭이나 창에서 이 앱이 열려 있습니다.\n시험이 즉시 종료됩니다.', '선생님께 자동 통보됩니다');
   };
-  // 퀴즈 시작 시 다른 탭 있는지 확인
-  setInterval(() => {
-    if (quizActive) bc.postMessage('ping');
-  }, 3000);
+  setInterval(() => { if (quizActive) bc.postMessage('ping'); }, 3000);
 } catch(e) {}
 
 function triggerLock(title, msg, sub) {
-  multiTabLocked = true;
-  quizActive = false;
-  stopTimer();
+  multiTabLocked = true; quizActive = false; stopTimer();
   document.getElementById('lock-title').textContent = title;
   document.getElementById('lock-msg').textContent = msg;
   document.getElementById('lock-sub').textContent = sub || '';
@@ -617,36 +588,21 @@ function triggerLock(title, msg, sub) {
 }
 function closeLock() {
   document.getElementById('lock-overlay').classList.remove('active');
-  multiTabLocked = false;
-  warnCount = 0;
-  showScreen('screen-welcome');
+  multiTabLocked = false; warnCount = 0; showScreen('screen-welcome');
 }
 
 // ===== TIMER =====
 function startPerQuestionTimer(secs, onExpire) {
-  clearInterval(timerInterval);
-  timerLeft = secs;
-  updateTimerDisplay();
-  timerInterval = setInterval(() => {
-    timerLeft--;
-    updateTimerDisplay();
-    if (timerLeft <= 0) { clearInterval(timerInterval); onExpire(); }
-  }, 1000);
+  clearInterval(timerInterval); timerLeft = secs; updateTimerDisplay();
+  timerInterval = setInterval(() => { timerLeft--; updateTimerDisplay(); if (timerLeft <= 0) { clearInterval(timerInterval); onExpire(); } }, 1000);
 }
 function startTotalTimer(secs, onExpire) {
-  clearInterval(timerInterval);
-  timerLeft = secs;
-  updateTimerDisplay();
-  timerInterval = setInterval(() => {
-    timerLeft--;
-    updateTimerDisplay();
-    if (timerLeft <= 0) { clearInterval(timerInterval); onExpire(); }
-  }, 1000);
+  clearInterval(timerInterval); timerLeft = secs; updateTimerDisplay();
+  timerInterval = setInterval(() => { timerLeft--; updateTimerDisplay(); if (timerLeft <= 0) { clearInterval(timerInterval); onExpire(); } }, 1000);
 }
 function stopTimer() { clearInterval(timerInterval); }
 function updateTimerDisplay() {
-  const el = document.getElementById('timer-display');
-  if (!el) return;
+  const el = document.getElementById('timer-display'); if (!el) return;
   const m = Math.floor(timerLeft/60), s = timerLeft%60;
   el.textContent = m > 0 ? `${m}:${String(s).padStart(2,'0')}` : `${timerLeft}초`;
   el.style.color = timerLeft <= 5 ? 'var(--danger)' : 'var(--accent)';
@@ -671,7 +627,6 @@ async function apiPost(data) {
   return res.json();
 }
 
-// 캐시: 메모리 캐시 + 만료 시간 (5분)
 const cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
 async function apiCached(params) {
@@ -743,7 +698,6 @@ async function register() {
 
 function logout() { currentUser=null; showScreen('screen-login'); }
 
-// school chips 초기화
 function initSchoolChips() {
   const el = document.getElementById('school-list');
   if (!el) return;
@@ -789,16 +743,12 @@ async function loadBooks() {
   const sel = document.getElementById('book-select');
   sel.innerHTML = '<option value="">교재를 선택하세요</option>';
   try {
-    // 학교 필터링: 학생 학교에 배포된 교재만
-    const params = { action:'getBooks' };
-    if (currentUser && currentUser.school) params.school = currentUser.school;
-    const books = await apiCached(params);
+    const books = await apiCached({ action:'getBooks' });
     books.forEach(b => {
       const o = document.createElement('option');
       o.value = b; o.textContent = b;
       sel.appendChild(o);
     });
-
   } catch(e) {}
 }
 
@@ -837,7 +787,6 @@ async function loadPassageNums() {
   if (!book || !unit) { document.getElementById('passage-select-wrap').style.display='none'; return; }
   selectedPassages = [];
   try {
-    // 해당 unit의 지문 번호 목록 로드 (passageNums 액션)
     const nums = await apiCached({ action:'getPassageNums', book, unit });
     const wrap = document.getElementById('passage-select-wrap');
     const chips = document.getElementById('passage-chips');
@@ -845,7 +794,6 @@ async function loadPassageNums() {
       chips.innerHTML = nums.map(n => `<button class="chip" data-num="${n}" onclick="togglePassageChip(this)">지문 ${n}</button>`).join('') + `<button class="chip" data-num="all" onclick="selectAllPassages()">전체</button>`;
       wrap.style.display = 'block';
     } else {
-      // 지문 번호 없으면 단일 지문으로 처리
       wrap.style.display = 'none';
       selectedPassages = ['all'];
     }
@@ -858,11 +806,8 @@ async function loadPassageNums() {
 function togglePassageChip(el) {
   el.classList.toggle('active');
   const num = el.dataset.num;
-  if (el.classList.contains('active')) {
-    if (!selectedPassages.includes(num)) selectedPassages.push(num);
-  } else {
-    selectedPassages = selectedPassages.filter(p=>p!==num);
-  }
+  if (el.classList.contains('active')) { if (!selectedPassages.includes(num)) selectedPassages.push(num); }
+  else { selectedPassages = selectedPassages.filter(p=>p!==num); }
 }
 function selectAllPassages() {
   document.querySelectorAll('#passage-chips .chip').forEach(c=>{c.classList.add('active');if(!selectedPassages.includes(c.dataset.num))selectedPassages.push(c.dataset.num);});
@@ -905,11 +850,7 @@ function renderCurrentBookBanner() {
     <button onclick="changeBook()" style="background:white;border:1.5px solid var(--accent);color:var(--accent);padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">바꾸기</button>
   `;
 }
-function changeBook() {
-  clearCache('getBooks');
-  loadBooks().catch(()=>{});
-  showScreen('screen-book');
-}
+function changeBook() { clearCache('getBooks'); loadBooks().catch(()=>{}); showScreen('screen-book'); }
 
 async function loadMyStageCounts() {
   myStageCounts = {1:0,2:0,3:0,6:0,'4-1':0,'4-2':0};
@@ -978,7 +919,7 @@ function runNextStage() {
   else if (stage===5) buildStage_BlankType();
 }
 
-// ===== STAGE 1: 영어문장 → 한국어 (분할 레이아웃) =====
+// ===== STAGE 1 =====
 function buildStage_En2Ko() {
   const pairs = passageData.sentences||[];
   if (!pairs.length) { stageResults[2]={score:0,total:0,wrong:[]}; currentStageIndex++; runNextStage(); return; }
@@ -988,8 +929,7 @@ function buildStage_En2Ko() {
 
 function showEn2KoQ() {
   if (currentQ >= questions.length) {
-    stopTimer();
-    stageResults[2] = {score, total:questions.length, wrong:wrongItems};
+    stopTimer(); stageResults[2] = {score, total:questions.length, wrong:wrongItems};
     currentStageIndex++; showStageResult(2); return;
   }
   const q = questions[currentQ];
@@ -999,35 +939,25 @@ function showEn2KoQ() {
   window._correctIndex = opts.indexOf(q.kor);
   window._currentEng = q.eng; window._currentAnswer = q.kor;
   window._selectedIdx = -1; window._submitted = false;
-
   const isWide = window.innerWidth >= 600;
   const pct = (currentQ/questions.length)*100;
-
   if (isWide) {
-    // 태블릿: 지문 좌 / 선지 우
     document.getElementById('quiz-content').innerHTML = `
       <div class="stage-badge">1단계 · 문장 선택 (한국어)</div>
       <div class="quiz-header">
-        <div class="timer-row">
-          <span class="q-num">${currentQ+1} / ${questions.length}</span>
-          <span id="timer-display">20초</span>
-        </div>
+        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       </div>
       <p style="font-size:14px;color:var(--text2);margin-bottom:12px">영어 문장에 맞는 한국어 해석을 고르세요</p>
       <div class="split-layout">
-        <div class="split-passage">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">영어 문장</div>
-          ${escHtml(q.eng)}
-        </div>
+        <div class="split-passage"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">영어 문장</div>${escHtml(q.eng)}</div>
         <div class="split-options">
           <div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:700">선지</div>
           ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}
         </div>
       </div>
       <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('en2ko')">제출</button>
-      <div id="feedback"></div>
-    `;
+      <div id="feedback"></div>`;
   } else {
     document.getElementById('quiz-content').innerHTML = `
       <div class="stage-badge">1단계 · 문장 선택 (한국어)</div>
@@ -1037,12 +967,9 @@ function showEn2KoQ() {
       </div>
       <div class="question-text">한국어 뜻을 고르세요</div>
       <div class="question-sub">${escHtml(q.eng)}</div>
-      <div class="options">
-        ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}
-      </div>
+      <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}</div>
       <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('en2ko')">제출</button>
-      <div id="feedback"></div>
-    `;
+      <div id="feedback"></div>`;
   }
   startPerQuestionTimer(20, () => {
     if (window._submitted) return;
@@ -1056,7 +983,7 @@ function showEn2KoQ() {
   });
 }
 
-// ===== STAGE 2: 한국어 → 영어 (분할 레이아웃) =====
+// ===== STAGE 2 =====
 function buildStage_Ko2En() {
   const pairs = passageData.sentences||[];
   if (!pairs.length) { stageResults[3]={score:0,total:0,wrong:[]}; currentStageIndex++; runNextStage(); return; }
@@ -1079,8 +1006,7 @@ function getSimilarOpts(correct, all, count) {
 
 function showKo2EnQ() {
   if (currentQ >= questions.length) {
-    stopTimer();
-    stageResults[3]={score, total:questions.length, wrong:wrongItems};
+    stopTimer(); stageResults[3]={score, total:questions.length, wrong:wrongItems};
     currentStageIndex++; showStageResult(3); return;
   }
   const q = questions[currentQ];
@@ -1090,10 +1016,8 @@ function showKo2EnQ() {
   window._correctIndex = opts.indexOf(q.eng);
   window._currentKor = q.kor; window._currentAnswer = q.eng;
   window._selectedIdx = -1; window._submitted = false;
-
   const isWide = window.innerWidth >= 600;
   const pct = (currentQ/questions.length)*100;
-
   if (isWide) {
     document.getElementById('quiz-content').innerHTML = `
       <div class="stage-badge">2단계 · 문장 선택 (영어)</div>
@@ -1103,18 +1027,14 @@ function showKo2EnQ() {
       </div>
       <p style="font-size:14px;color:var(--text2);margin-bottom:12px">한국어 해석에 맞는 영어 문장을 고르세요</p>
       <div class="split-layout">
-        <div class="split-passage" style="color:var(--accent);font-weight:500">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">한국어 해석</div>
-          ${escHtml(q.kor)}
-        </div>
+        <div class="split-passage" style="color:var(--accent);font-weight:500"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">한국어 해석</div>${escHtml(q.kor)}</div>
         <div class="split-options">
           <div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:700">선지</div>
           ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}
         </div>
       </div>
       <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('ko2en')">제출</button>
-      <div id="feedback"></div>
-    `;
+      <div id="feedback"></div>`;
   } else {
     document.getElementById('quiz-content').innerHTML = `
       <div class="stage-badge">2단계 · 문장 선택 (영어)</div>
@@ -1124,12 +1044,9 @@ function showKo2EnQ() {
       </div>
       <div class="question-text">영어 문장을 고르세요</div>
       <div class="korean-hint">${escHtml(q.kor)}</div>
-      <div class="options">
-        ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}
-      </div>
+      <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}</div>
       <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('ko2en')">제출</button>
-      <div id="feedback"></div>
-    `;
+      <div id="feedback"></div>`;
   }
   startPerQuestionTimer(20, () => {
     if (window._submitted) return;
@@ -1154,8 +1071,7 @@ function submitSentence(type) {
   if (window._submitted) return;
   const idx = window._selectedIdx;
   if (idx===undefined||idx===-1) return;
-  window._submitted = true;
-  stopTimer();
+  window._submitted = true; stopTimer();
   document.querySelectorAll('.option').forEach(b=>b.disabled=true);
   const correctIdx = window._correctIndex;
   const btn = document.querySelector(`.option[data-idx="${idx}"]`);
@@ -1174,7 +1090,7 @@ function submitSentence(type) {
   setTimeout(type==='en2ko'?showEn2KoQ:showKo2EnQ, 2000);
 }
 
-// ===== STAGE 3-1: 단어 객관식 =====
+// ===== STAGE 3-1 =====
 function buildStage_WordMC() {
   if (!wordsData.length) { stageResults[1]={score:0,total:0,wrong:[]}; currentStageIndex++; runNextStage(); return; }
   const seen=new Set();
@@ -1186,8 +1102,7 @@ function buildStage_WordMC() {
 
 function showWordMCQ() {
   if (currentQ>=questions.length) {
-    stopTimer();
-    stageResults[1]={score, total:questions.length, wrong:wrongItems};
+    stopTimer(); stageResults[1]={score, total:questions.length, wrong:wrongItems};
     currentStageIndex++; showStageResult(1); return;
   }
   const q = questions[currentQ];
@@ -1197,7 +1112,6 @@ function showWordMCQ() {
   window._correctIndex = opts.indexOf(q.answer);
   window._currentWord = q.word; window._currentAnswer = q.answer;
   window._selectedIdx = -1; window._submitted = false;
-
   document.getElementById('quiz-content').innerHTML = `
     <div class="stage-badge">3-1단계 · 단어 객관식</div>
     <div class="quiz-header">
@@ -1206,12 +1120,9 @@ function showWordMCQ() {
     </div>
     <div class="question-text">${escHtml(q.question)}</div>
     <p style="font-size:14px;color:var(--text2);margin-bottom:12px">한국어 뜻을 고르세요</p>
-    <div class="options">
-      ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectWordOpt(${i})">${escHtml(o)}</button>`).join('')}
-    </div>
+    <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectWordOpt(${i})">${escHtml(o)}</button>`).join('')}</div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="submitWordMC()">제출</button>
-    <div id="feedback"></div>
-  `;
+    <div id="feedback"></div>`;
   startPerQuestionTimer(15, () => {
     if(window._submitted)return;
     if(window._selectedIdx===-1){
@@ -1244,7 +1155,7 @@ function submitWordMC() {
   currentQ++; setTimeout(showWordMCQ, 2000);
 }
 
-// ===== STAGE 3-2: 단어 주관식 =====
+// ===== STAGE 3-2 =====
 function buildStage_WordType() {
   if(!wordsData.length){stageResults[6]={score:0,total:0,wrong:[]};currentStageIndex++;runNextStage();return;}
   const seen=new Set();
@@ -1268,8 +1179,7 @@ function showWordTypeQ() {
     <div style="text-align:center;font-size:22px;letter-spacing:5px;margin:16px 0;font-family:monospace;color:var(--accent)">${escHtml(hint)}</div>
     <input type="text" id="word-input" placeholder="영어 단어 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="text-align:center;font-size:20px"/>
     <button class="btn btn-primary" onclick="submitWordType()">제출</button>
-    <div id="feedback"></div>
-  `;
+    <div id="feedback"></div>`;
   window._typingSubmitted=false;
   setTimeout(()=>{const inp=document.getElementById('word-input');if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitWordType();});}},100);
   startPerQuestionTimer(30,()=>{if(window._typingSubmitted)return;window._typingSubmitted=true;wrongItems.push({word:q.word,answer:q.answer,userAnswer:''});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${q.answer}</div>`;const inp=document.getElementById('word-input');if(inp)inp.disabled=true;currentQ++;setTimeout(showWordTypeQ,2000);});
@@ -1289,7 +1199,7 @@ function submitWordType() {
   currentQ++; setTimeout(showWordTypeQ, 2000);
 }
 
-// ===== STAGE 4-1: 빈칸 객관식 =====
+// ===== STAGE 4 =====
 let blankQuestions=[], stage4Answers={}, stage4Options={}, isStage4b=false;
 
 const COMMON_WORDS = new Set(['the','is','was','are','were','am','be','been','being','will','would','can','could','may','might','must','shall','should','do','does','did','have','has','had','a','an','and','or','but','so','if','of','in','on','at','to','for','with','from','by','as','into','about','over','under','through','before','after','between','among','this','that','these','those','it','its','they','them','their','we','us','our','you','your','i','me','my','he','him','his','she','her','not','no','yes','too','very','just','only','also','when','where','what','who','why','how','which','all','any','some','many','much','more','most','few','less','one','two','three','each','every','both','up','down','out','back','here','there','now','again','still']);
@@ -1362,8 +1272,7 @@ function renderBlankPassage() {
     <p style="font-size:14px;color:var(--text2);margin-bottom:10px">빈칸 (N) 을 눌러서 답을 선택하세요</p>
     <div class="passage-text">${displayed}</div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="submitStage4()" ${answeredCount<blankQuestions.length?'disabled':''}>제출</button>
-    <div id="blank-popup" class="blank-popup" style="display:none"></div>
-  `;
+    <div id="blank-popup" class="blank-popup" style="display:none"></div>`;
   if(timerLeft===0)startTotalTimer(totalSecs,()=>submitStage4());
 }
 
@@ -1397,13 +1306,11 @@ function openBlankPopup(idx) {
 }
 
 function closePopup() { const p=document.getElementById('blank-popup'); if(p)p.style.display='none'; }
-
 function submitBlankMC(idx, answer) {
   stage4Answers[idx]=answer; closePopup(); renderBlankPassage();
   if(!window._lastStage4_1||window._lastStage4_1.book!==selectedBook||window._lastStage4_1.unit!==selectedUnit) window._lastStage4_1={book:selectedBook,unit:selectedUnit,words:[]};
   if(!window._lastStage4_1.words.includes(answer.toLowerCase()))window._lastStage4_1.words.push(answer.toLowerCase());
 }
-
 function submitBlankType(idx) {
   const inp=document.getElementById('popup-input');
   if(!inp)return;
@@ -1411,7 +1318,6 @@ function submitBlankType(idx) {
   if(!val){inp.focus();return;}
   stage4Answers[idx]=val; closePopup(); renderBlankPassage();
 }
-
 function submitStage4() {
   stopTimer();
   let sc=0; const wrong=[];
@@ -1430,19 +1336,15 @@ function showStageResult(stageKey) {
   const r=stageResults[stageKey]||{score:0,total:0,wrong:[]};
   const pct=r.total>0?Math.round(r.score/r.total*100):0;
   const isLast=currentStageIndex>=stageQueue.length;
-  const wrongCount=r.wrong.length;
   document.getElementById('quiz-content').innerHTML=`
     <div style="text-align:center;padding:16px 0">
       <div class="score-circle" style="background:${pct>=70?'var(--success)':'var(--danger)'}">
-        <span class="score-num">${pct}</span>
-        <span class="score-label">점</span>
+        <span class="score-num">${pct}</span><span class="score-label">점</span>
       </div>
       <p style="color:var(--text2);font-size:15px">${r.score}/${r.total} 정답</p>
-      ${wrongCount>=3?'<p style="color:var(--danger);font-weight:700;margin-top:6px">재시험 대상 (오답 '+wrongCount+'개)</p>':''}
+      ${r.wrong.length>=3?'<p style="color:var(--danger);font-weight:700;margin-top:6px">재시험 대상 (오답 '+r.wrong.length+'개)</p>':''}
     </div>
-    <button class="btn btn-primary" style="margin-top:8px" onclick="continueTest()">${isLast?'최종 결과 보기':'다음 단계 →'}</button>
-  `;
-  // 결과 저장
+    <button class="btn btn-primary" style="margin-top:8px" onclick="continueTest()">${isLast?'최종 결과 보기':'다음 단계 →'}</button>`;
   saveStageResult(stageKey, r);
 }
 
@@ -1499,8 +1401,7 @@ function finishAll() {
       <p style="color:var(--text2);font-size:14px">${totalScore}/${totalQ} 정답</p>
     </div>
     <div class="result-tabs">${tabs.join('')}</div>
-    ${tabContents.join('')}
-  `;
+    ${tabContents.join('')}`;
 }
 
 function showResultTab(stage) {
@@ -1573,7 +1474,6 @@ async function loadTeacherData() {
     const yesterday=new Date(now-86400000).toLocaleDateString('ko-KR');
     const filtered=results.filter(r=>{const d=String(r.date);return d.includes(today)||d.includes(yesterday);});
     if(!filtered.length){el.innerHTML='<p style="color:var(--text2);text-align:center;padding:20px">어제·오늘 결과가 없어요</p>';return;}
-
     const byStudent={};
     filtered.forEach(r=>{
       const key=`${r.id}__${r.book}__${r.unit}`;
@@ -1583,50 +1483,32 @@ async function loadTeacherData() {
       else if(s===5){byStudent[key].stages['4-2'].push(r);}
       else if(byStudent[key].stages[s])byStudent[key].stages[s].push(r);
     });
-
     const list=Object.values(byStudent).map(stu=>{
-      let latest=0;
-      let isToday=false;
+      let latest=0; let isToday=false;
       [1,2,3,6,'4-1','4-2'].forEach(s=>(stu.stages[s]||[]).forEach(r=>{
         const t=parseKoreanDate(r.date);
         if(t>latest)latest=t;
         if(String(r.date).includes(today))isToday=true;
       }));
-      stu._latest=latest;
-      stu._isToday=isToday;
-      return stu;
+      stu._latest=latest; stu._isToday=isToday; return stu;
     }).sort((a,b)=>{
-      // 오늘 본 학생 먼저, 그 안에서 최근순
       if(a._isToday&&!b._isToday)return -1;
       if(!a._isToday&&b._isToday)return 1;
       return b._latest-a._latest;
     });
-
     window._kakaoTexts=list.map(s=>buildKakaoText(s));
-
     let html=`<p style="font-size:13px;color:var(--text2);margin-bottom:12px">오늘 응시 ${list.filter(s=>s._isToday).length}명 · 어제 포함 ${list.length}명</p><div style="display:flex;flex-direction:column;gap:6px">`;
-
     list.forEach((stu,idx)=>{
-      // 단계별 점수 요약 뱃지
       const badges=[['1','1단계'],['2','2단계'],['3','3-1'],['6','3-2'],['4-1','4-1'],['4-2','4-2']].map(([key,label])=>{
         const arr=stu.stages[key]; if(!arr||!arr.length)return'';
-        return arr.map((r,i)=>{
-          const wrong=Number(r.total)-Number(r.score);
-          const color=wrong>=3?'var(--danger)':'var(--accent)';
-          return`<span style="background:var(--accent-light);color:${color};border-radius:6px;padding:2px 9px;font-size:12px;font-weight:700">${label} ${r.score}/${r.total}</span>`;
-        }).join('');
+        return arr.map(r=>{const color=(Number(r.total)-Number(r.score))>=3?'var(--danger)':'var(--accent)';return`<span style="background:var(--accent-light);color:${color};border-radius:6px;padding:2px 9px;font-size:12px;font-weight:700">${label} ${r.score}/${r.total}</span>`;}).join('');
       }).join('');
-
       const todayBadge=stu._isToday?`<span style="background:#dcfce7;color:var(--success);font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px">오늘</span>`:'';
-
       html+=`
       <div style="background:var(--surface2);border-radius:10px;overflow:hidden;border:1px solid var(--border)">
         <div style="padding:13px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="toggleStudentCard(${idx})">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:16px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">
-              ${escHtml(stu.name)}${todayBadge}
-              <span style="font-size:12px;font-weight:400;color:var(--text2)">${escHtml(stu.school)}</span>
-            </div>
+            <div style="font-weight:700;font-size:16px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${escHtml(stu.name)}${todayBadge}<span style="font-size:12px;font-weight:400;color:var(--text2)">${escHtml(stu.school)}</span></div>
             <div style="font-size:13px;color:var(--text2);margin-top:3px">${escHtml(stu.book)} · ${escHtml(stu.unit)}${stu.passages?` · 지문 ${escHtml(stu.passages)}`:''}</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${badges}</div>
           </div>
@@ -1638,11 +1520,8 @@ async function loadTeacherData() {
         </div>
       </div>`;
     });
-
     html+='</div>';
     el.innerHTML=html;
-
-    // 승인 대기
     const students=await api({action:'getStudents'});
     const pending=students.filter(s=>s.approved!=='Y');
     if(pending.length){
@@ -1657,38 +1536,20 @@ async function loadTeacherData() {
 }
 
 function buildDetailHTML(stu) {
-  const stageInfo=[
-    ['1','1단계','문장선택(한국어)'],
-    ['2','2단계','문장선택(영어)'],
-    ['3','3-1단계','단어 객관식'],
-    ['6','3-2단계','단어 주관식'],
-    ['4-1','4-1단계','빈칸 객관식'],
-    ['4-2','4-2단계','빈칸 주관식']
-  ];
+  const stageInfo=[['1','1단계','문장선택(한국어)'],['2','2단계','문장선택(영어)'],['3','3-1단계','단어 객관식'],['6','3-2단계','단어 주관식'],['4-1','4-1단계','빈칸 객관식'],['4-2','4-2단계','빈칸 주관식']];
   let html='';
   stageInfo.forEach(([key,label,name])=>{
-    const arr=stu.stages[key];
-    if(!arr||!arr.length)return;
-    arr.forEach((r,i)=>{
-      const wrong=Number(r.total)-Number(r.score);
+    const arr=stu.stages[key]; if(!arr||!arr.length)return;
+    arr.forEach(r=>{
       const pct=r.total>0?Math.round(r.score/r.total*100):0;
       const color=pct>=70?'var(--success)':'var(--danger)';
-      // 오답 파싱
       const wrongItems=parseWrongContent(r.wrongContent, key);
-      html+=`
-      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      html+=`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-weight:700;font-size:14px">${label} · ${name}</span>
           <span style="font-size:15px;font-weight:700;color:${color}">${r.score}/${r.total} (${pct}점)</span>
         </div>
-        ${wrongItems.length?`
-          <div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:4px">오답 ${wrongItems.length}개</div>
-          ${wrongItems.map(w=>`
-            <div style="background:#fef2f2;border-left:3px solid var(--danger);border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:5px;font-size:13px;line-height:1.6">
-              ${w}
-            </div>
-          `).join('')}
-        `:'<div style="font-size:13px;color:var(--success)">오답 없음</div>'}
+        ${wrongItems.length?`<div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:4px">오답 ${wrongItems.length}개</div>${wrongItems.map(w=>`<div style="background:#fef2f2;border-left:3px solid var(--danger);border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:5px;font-size:13px;line-height:1.6">${w}</div>`).join('')}`:'<div style="font-size:13px;color:var(--success)">오답 없음</div>'}
       </div>`;
     });
   });
@@ -1698,24 +1559,8 @@ function buildDetailHTML(stu) {
 function parseWrongContent(content, stageKey) {
   if(!content||String(content).trim()==='')return[];
   const s=String(content).trim();
-  // /// 구분자 있으면 → 문장 쌍
-  if(s.includes('///')){
-    return s.split('///').map(pair=>{
-      const parts=pair.split('|||');
-      if(parts.length>=2){
-        const eng=parts[0].trim();
-        const kor=parts[1].trim();
-        return`<b>영어:</b> ${escHtml(eng)}<br><b>한국어:</b> ${escHtml(kor)}`;
-      }
-      return escHtml(parts[0].trim());
-    }).filter(Boolean);
-  }
-  // ||| 구분자만 있으면 → 단어/뜻 쌍
-  if(s.includes('|||')){
-    const parts=s.split('|||');
-    return[`<b>${escHtml(parts[0]?.trim()||'')}</b> → ${escHtml(parts[1]?.trim()||'')}`];
-  }
-  // 콤마 구분 → 단어 목록
+  if(s.includes('///')){return s.split('///').map(pair=>{const parts=pair.split('|||');if(parts.length>=2)return`<b>영어:</b> ${escHtml(parts[0].trim())}<br><b>한국어:</b> ${escHtml(parts[1].trim())}`;return escHtml(parts[0].trim());}).filter(Boolean);}
+  if(s.includes('|||')){const parts=s.split('|||');return[`<b>${escHtml(parts[0]?.trim()||'')}</b> → ${escHtml(parts[1]?.trim()||'')}`];}
   return s.split(',').map(w=>w.trim()).filter(Boolean).map(w=>`<b>${escHtml(w)}</b>`);
 }
 
@@ -1727,8 +1572,6 @@ function toggleStudentCard(idx){
   det.style.display=isOpen?'none':'block';
   if(arrow)arrow.textContent=isOpen?'▾':'▴';
 }
-
-function toggleDetail(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
 
 function saveApiKey() {
   const key = document.getElementById('api-key-input').value.trim();
@@ -1742,13 +1585,8 @@ function saveApiKey() {
 function updateApiKeyStatus() {
   const el = document.getElementById('api-key-status');
   if (!el) return;
-  if (CLAUDE_API_KEY) {
-    el.textContent = '설정됨';
-    el.style.color = 'var(--success)';
-  } else {
-    el.textContent = '미설정';
-    el.style.color = 'var(--danger)';
-  }
+  if (CLAUDE_API_KEY) { el.textContent = '설정됨'; el.style.color = 'var(--success)'; }
+  else { el.textContent = '미설정'; el.style.color = 'var(--danger)'; }
 }
 
 async function showPassageInput() {
@@ -1765,7 +1603,6 @@ async function showPassageInput() {
           <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="flex:1;font-size:13px;margin:0" autocomplete="off"/>
           <button onclick="saveApiKey()" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">저장</button>
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-top:8px">사진 자동 추출 기능에 필요 · 직접 입력 시 불필요</div>
       </div>
       <div>
         <div style="font-size:14px;font-weight:700;margin-bottom:6px">교재</div>
@@ -1784,11 +1621,11 @@ async function showPassageInput() {
         <input type="text" id="input-unit" placeholder="예: Unit 2" style="margin:0"/>
       </div>
       <div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:6px">지문 번호 <span style="font-size:12px;font-weight:400;color:var(--text2)">(여러 지문 구분 시 입력)</span></div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">지문 번호</div>
         <input type="text" id="input-passage-num" placeholder="예: 1 (또는 비워두기)" style="margin:0"/>
       </div>
       <div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:6px">배포 학교 선택 <span style="font-size:12px;font-weight:400;color:var(--text2)">(여러 개 선택 가능)</span></div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">배포 학교 선택</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px" id="school-dist-chips">
           ${SCHOOLS.map(s=>`<button class="chip" data-school="${s}" onclick="toggleSchoolChip(this)">${s}</button>`).join('')}
         </div>
@@ -1812,13 +1649,12 @@ async function showPassageInput() {
       </div>
       <div>
         <div style="font-size:14px;font-weight:700;margin-bottom:6px">단어 <span style="font-size:12px;font-weight:400;color:var(--text2)">(한 줄에 하나: 단어/뜻)</span></div>
-        <textarea id="input-words" rows="5" placeholder="diverse/다양한&#10;accommodate/수용하다&#10;conflict/갈등" style="margin:0;resize:vertical"></textarea>
+        <textarea id="input-words" rows="5" placeholder="diverse/다양한&#10;accommodate/수용하다" style="margin:0;resize:vertical"></textarea>
       </div>
       <button class="btn btn-primary" onclick="processAndSave()">AI 문장 분리 후 저장</button>
       <div id="input-msg" class="msg"></div>
       <div id="preview-content"></div>
-    </div>
-  `;
+    </div>`;
 }
 
 function toggleSchoolChip(el){el.classList.toggle('active');}
@@ -1827,33 +1663,13 @@ function onBookSelectChange(){const v=document.getElementById('input-book').valu
 async function processPhoto(input) {
   const file=input.files[0]; if(!file)return;
   const msg=document.getElementById('input-msg');
-  if(!CLAUDE_API_KEY){
-    msg.className='msg error';
-    msg.textContent='API 키가 설정되지 않았습니다. 위에서 API 키를 먼저 저장하세요.';
-    return;
-  }
-  msg.className='msg';msg.textContent='사진 분석 중... AI가 지문과 단어를 추출합니다';
+  if(!CLAUDE_API_KEY){msg.className='msg error';msg.textContent='API 키가 설정되지 않았습니다.';return;}
+  msg.className='msg';msg.textContent='사진 분석 중...';
   try {
     const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('읽기 실패'));r.readAsDataURL(file);});
-    const response=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:4000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
-          {type:'text',text:'이 교재 이미지에서 영어 지문과 한국어 해석, Words & Phrases 단어 목록을 추출해줘.\n\nJSON 형식으로만 응답:\n{"eng":"영어지문전체","kor":"한국어해석전체","words":[{"word":"영단어","meaning":"한국어뜻"}]}'}
-        ]}]
-      })
-    });
+    const response=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':CLAUDE_API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:file.type,data:base64}},{type:'text',text:'이 교재 이미지에서 영어 지문과 한국어 해석, Words & Phrases 단어 목록을 추출해줘.\n\nJSON 형식으로만 응답:\n{"eng":"영어지문전체","kor":"한국어해석전체","words":[{"word":"영단어","meaning":"한국어뜻"}]}'}]}]})});
     const data=await response.json();
-    if(data.error){throw new Error(data.error.message||'API 오류');}
+    if(data.error)throw new Error(data.error.message||'API 오류');
     const text=data.content[0].text.replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(text);
     if(parsed.eng)document.getElementById('input-eng').value=parsed.eng;
@@ -1880,20 +1696,11 @@ async function processAndSave() {
     const words=wordsRaw?wordsRaw.split('\n').map(line=>{const idx=line.indexOf('/');return{word:line.slice(0,idx)?.trim(),meaning:line.slice(idx+1)?.trim()};}).filter(w=>w.word&&w.meaning):[];
     const result=await apiPost({action:'splitAndSave',book,unit,passageNum,eng,kor,words,schools,createNew:isNewBook?'Y':'N'});
     if(result.result==='success'){
-      const wordCount=result.words?.length||0;
-      const autoMsg=result.autoWords?` (단어 ${wordCount}개 자동 추출)`:`(단어 ${wordCount}개)`;
-      msg.className='msg success';msg.textContent=`완료! ${result.count}개 문장 저장 ${autoMsg}`;
+      msg.className='msg success';msg.textContent=`완료! ${result.count}개 문장 저장 (단어 ${result.words?.length||0}개)`;
       if(isNewBook)clearCache();
-      // 저장된 문장 미리보기
       let previewHtml=`<hr class="divider"><p style="font-weight:700;margin-bottom:10px">저장된 문장 (${result.sentences.length}개)</p>`;
       previewHtml+=result.sentences.map((s,i)=>`<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;font-size:14px"><p style="margin-bottom:4px">${i+1}. ${escHtml(s.eng)}</p><p style="color:var(--text2)">${escHtml(s.kor)}</p></div>`).join('');
-      // 자동 추출 단어 미리보기
-      if(result.words&&result.words.length){
-        previewHtml+=`<p style="font-weight:700;margin:14px 0 8px">저장된 단어 (${result.words.length}개)${result.autoWords?' — AI 자동 추출':''}</p>`;
-        previewHtml+=`<div style="display:flex;flex-wrap:wrap;gap:6px">`;
-        previewHtml+=result.words.map(w=>`<div style="background:var(--accent-light);border:1px solid var(--accent-border);border-radius:8px;padding:6px 12px;font-size:13px"><b>${escHtml(w.word)}</b> <span style="color:var(--text2)">${escHtml(w.meaning)}</span></div>`).join('');
-        previewHtml+=`</div>`;
-      }
+      if(result.words&&result.words.length){previewHtml+=`<p style="font-weight:700;margin:14px 0 8px">저장된 단어 (${result.words.length}개)</p><div style="display:flex;flex-wrap:wrap;gap:6px">${result.words.map(w=>`<div style="background:var(--accent-light);border:1px solid var(--accent-border);border-radius:8px;padding:6px 12px;font-size:13px"><b>${escHtml(w.word)}</b> <span style="color:var(--text2)">${escHtml(w.meaning)}</span></div>`).join('')}</div>`;}
       document.getElementById('preview-content').innerHTML=previewHtml;
     }else{msg.className='msg error';msg.textContent='오류: '+(result.msg||'알 수 없는 오류');}
   }catch(e){msg.className='msg error';msg.textContent='오류: '+e.message;}
@@ -1911,8 +1718,7 @@ async function showStudentManage() {
       ${pending.length?pending.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:15px"><div><div style="font-weight:700">${escHtml(s.name)}</div><div style="font-size:13px;color:var(--text2)">${escHtml(s.school||'')} · ${escHtml(s.id)}</div></div><button class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:13px;margin:0" onclick="approveStudent('${s.id}')">승인</button></div>`).join(''):'<p style="color:var(--text2);font-size:14px;margin-bottom:12px">없음</p>'}
       <hr class="divider">
       <div style="font-weight:700;font-size:15px;margin-bottom:8px">승인된 학생 (${approved.length}명)</div>
-      ${approved.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:5px;font-size:14px;display:flex;justify-content:space-between"><span>${escHtml(s.name)} · ${escHtml(s.school||'')}</span><span style="color:var(--text2)">${escHtml(s.id)}</span></div>`).join('')}
-    `;
+      ${approved.map(s=>`<div style="padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:5px;font-size:14px;display:flex;justify-content:space-between"><span>${escHtml(s.name)} · ${escHtml(s.school||'')}</span><span style="color:var(--text2)">${escHtml(s.id)}</span></div>`).join('')}`;
   }catch(e){el.innerHTML='<p style="color:var(--danger)">오류가 발생했습니다.</p>';}
 }
 
@@ -1930,8 +1736,7 @@ async function loadAdminPage() {
       ${pending.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px;background:var(--surface2);border-radius:8px;margin-bottom:6px"><div><div style="font-weight:700;font-size:15px">${escHtml(s.name)}</div><div style="font-size:13px;color:var(--text2)">${escHtml(s.school||'')} · ${escHtml(s.id)}</div></div><button class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:13px;margin:0" onclick="approveStudent('${s.id}')">승인</button></div>`).join('')||'<p class="small">없음</p>'}
       <hr class="divider">
       <div style="font-weight:700;font-size:15px;margin-bottom:8px">승인된 학생 (${approved.length}명)</div>
-      ${approved.map(s=>`<p class="small" style="padding:4px 0">${escHtml(s.name)} · ${escHtml(s.school||'')} (${escHtml(s.id)})</p>`).join('')}
-    `;
+      ${approved.map(s=>`<p class="small" style="padding:4px 0">${escHtml(s.name)} · ${escHtml(s.school||'')} (${escHtml(s.id)})</p>`).join('')}`;
   }catch(e){document.getElementById('admin-content').innerHTML='<p style="color:var(--danger)">오류가 발생했습니다.</p>';}
 }
 
@@ -1939,24 +1744,14 @@ async function loadAdminPage() {
 function buildKakaoText(student) {
   const now=new Date();
   const dateStr=now.toLocaleString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  const lines=[
-    `[헤일리올라 리딩 결과]`,
-    `이름: ${student.name}`,
-    `학교: ${student.school||''}`,
-    `날짜: ${dateStr}`,
-    `교재: ${student.book} · ${student.unit}${student.passages?' · 지문 '+student.passages:''}`,
-    ``
-  ];
+  const lines=[`[헤일리올라 리딩 결과]`,`이름: ${student.name}`,`학교: ${student.school||''}`,`날짜: ${dateStr}`,`교재: ${student.book} · ${student.unit}${student.passages?' · 지문 '+student.passages:''}`,``];
   [['1','1단계(문장-한국어)'],['2','2단계(문장-영어)'],['3','3-1단계(단어 객관식)'],['6','3-2단계(단어 주관식)'],['4-1','4-1단계(빈칸 객관식)'],['4-2','4-2단계(빈칸 주관식)']].forEach(([key,name])=>{
     const arr=student.stages[key]; if(!arr||!arr.length)return;
-    arr.forEach((r,i)=>{
+    arr.forEach(r=>{
       const wrong=Number(r.total)-Number(r.score);
       const pct=r.total>0?Math.round(r.score/r.total*100):0;
       lines.push(`${name}: ${r.score}/${r.total} (${pct}점) · 오답 ${wrong}개`);
-      if(r.wrongContent&&String(r.wrongContent).trim()){
-        const items=parseWrongContentPlain(r.wrongContent);
-        if(items.length)lines.push(`  틀린 것: ${items.join(', ')}`);
-      }
+      if(r.wrongContent&&String(r.wrongContent).trim()){const items=parseWrongContentPlain(r.wrongContent);if(items.length)lines.push(`  틀린 것: ${items.join(', ')}`);}
     });
   });
   return lines.join('\n');
@@ -1965,30 +1760,25 @@ function buildKakaoText(student) {
 function parseWrongContentPlain(content) {
   if(!content||String(content).trim()==='')return[];
   const s=String(content).trim();
-  if(s.includes('///')){
-    return s.split('///').map(pair=>{
-      const parts=pair.split('|||');
-      return parts[0]?.trim()||'';
-    }).filter(Boolean);
-  }
-  if(s.includes('|||')){
-    return[s.split('|||')[0]?.trim()||''];
-  }
+  if(s.includes('///'))return s.split('///').map(pair=>pair.split('|||')[0]?.trim()||'').filter(Boolean);
+  if(s.includes('|||'))return[s.split('|||')[0]?.trim()||''];
   return s.split(',').map(w=>w.trim()).filter(Boolean);
 }
-function copyKakaoByIdx(idx){const t=(window._kakaoTexts||[])[idx];if(!t){alert('복사할 내용이 없어요.');return;}navigator.clipboard.writeText(t).then(()=>alert('복사됐어요! 카톡에 붙여넣기 하세요')).catch(()=>{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('복사됐어요!');});}
+
+function copyKakaoByIdx(idx){
+  const t=(window._kakaoTexts||[])[idx];
+  if(!t){alert('복사할 내용이 없어요.');return;}
+  navigator.clipboard.writeText(t).then(()=>alert('복사됐어요!')).catch(()=>{const el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('복사됐어요!');});
+}
 
 // ===== UTILS =====
 function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function parseKoreanDate(s){if(!s)return 0;const str=String(s).trim();const d1=new Date(str).getTime();if(!isNaN(d1))return d1;const m=str.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?\s*(오전|오후)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);if(m){let h=parseInt(m[5],10);if(m[4]==='오후'&&h<12)h+=12;if(m[4]==='오전'&&h===12)h=0;return new Date(parseInt(m[1],10),parseInt(m[2],10)-1,parseInt(m[3],10),h,parseInt(m[6],10),m[7]?parseInt(m[7],10):0).getTime();}return 0;}
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
-// ============================================
-// ===== 단어 TEST (Voca) =====
-// ============================================
+// ===== VOCA =====
 let vocaBook='', vocaUnit='', vocaStages=[1,2], vocaWords=[], vocaQueue=[], vocaStageIdx=0;
 let vocaQuestions=[], vocaCurrentQ=0, vocaScore=0, vocaWrong=[], vocaStageResults={};
-let vocaScrambles={};
 
 async function startVocaFlow() {
   showScreen('screen-voca-select');
@@ -2034,44 +1824,28 @@ async function startVocaTest() {
   document.getElementById('voca-quiz-content').innerHTML='<div class="loader"><div class="spinner"></div>단어 불러오는 중...</div>';
   try {
     vocaWords=await apiCached({action:'getVocaWords',book:vocaBook,unit:vocaUnit});
-    if(!vocaWords||!vocaWords.length){
-      document.getElementById('voca-quiz-content').innerHTML='<p style="color:var(--danger);text-align:center;padding:20px">단어 데이터가 없습니다.</p>';
-      return;
-    }
-    vocaScrambles={};
-    vocaWords.forEach((w,i)=>{vocaScrambles[i]=scrambleWord(w.word);});
+    if(!vocaWords||!vocaWords.length){document.getElementById('voca-quiz-content').innerHTML='<p style="color:var(--danger);text-align:center;padding:20px">단어 데이터가 없습니다.</p>';return;}
     runNextVocaStage();
   } catch(e){document.getElementById('voca-quiz-content').innerHTML='<p style="color:var(--danger)">데이터를 불러오지 못했습니다.</p>';}
 }
 
-function scrambleWord(word){
-  const chars=word.split('');
-  let scrambled;
-  do{scrambled=shuffle([...chars]).join('');}while(scrambled===word&&word.length>1);
-  return scrambled;
-}
+function scrambleWord(word){const chars=word.split('');let s;do{s=shuffle([...chars]).join('');}while(s===word&&word.length>1);return s;}
 
 function runNextVocaStage() {
   if(vocaStageIdx>=vocaQueue.length){finishVocaAll();return;}
   const stage=vocaQueue[vocaStageIdx];
   vocaScore=0; vocaWrong=[]; vocaCurrentQ=0;
-  // 최대 20개
   const seen=new Set();
   const uniq=vocaWords.filter(w=>{const k=(w.word||'').toLowerCase().trim();if(!k||seen.has(k))return false;seen.add(k);return true;});
-  vocaQuestions=shuffle(uniq.map((w,idx)=>({...w,_origIdx:vocaWords.indexOf(w)}))).slice(0,Math.min(uniq.length,20));
+  vocaQuestions=shuffle(uniq).slice(0,Math.min(uniq.length,20));
   if(stage===1)showVocaMC('en2ko');
   else if(stage===2)showVocaMC('ko2en');
   else if(stage===3)showVocaType();
   else if(stage===4)showVocaScramble();
 }
 
-// Stage 1,2: 객관식
 function showVocaMC(type) {
-  if(vocaCurrentQ>=vocaQuestions.length){
-    stopTimer();
-    vocaStageResults[type==='en2ko'?1:2]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};
-    vocaStageIdx++; showVocaStageResult(type==='en2ko'?1:2); return;
-  }
+  if(vocaCurrentQ>=vocaQuestions.length){stopTimer();vocaStageResults[type==='en2ko'?1:2]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};vocaStageIdx++;showVocaStageResult(type==='en2ko'?1:2);return;}
   const q=vocaQuestions[vocaCurrentQ];
   const question=type==='en2ko'?q.word:q.meaning;
   const answer=type==='en2ko'?q.meaning:q.word;
@@ -2081,7 +1855,6 @@ function showVocaMC(type) {
   window._vocaCorrectIdx=opts.indexOf(answer);
   window._vocaAnswer=answer; window._vocaWord=q.word; window._vocaMeaning=q.meaning;
   window._vocaSelectedIdx=-1; window._vocaSubmitted=false;
-
   document.getElementById('voca-quiz-content').innerHTML=`
     <div class="stage-badge">${type==='en2ko'?'1단계 · 영→한':'2단계 · 한→영'}</div>
     <div class="quiz-header">
@@ -2089,30 +1862,13 @@ function showVocaMC(type) {
       <div class="progress-bar"><div class="progress-fill" style="width:${(vocaCurrentQ/vocaQuestions.length)*100}%"></div></div>
     </div>
     <div class="question-text" style="text-align:center;font-size:22px;padding:16px 0">${escHtml(question)}</div>
-    <div class="options">
-      ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectVocaOpt(${i})">${escHtml(o)}</button>`).join('')}
-    </div>
+    <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectVocaOpt(${i})">${escHtml(o)}</button>`).join('')}</div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="submitVocaMC('${type}')">제출</button>
-    <div id="feedback"></div>
-  `;
-  startPerQuestionTimer(10,()=>{
-    if(window._vocaSubmitted)return;
-    if(window._vocaSelectedIdx===-1){
-      window._vocaSubmitted=true;
-      vocaWrong.push({word:q.word,meaning:q.meaning});
-      document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(Number(b.dataset.idx)===window._vocaCorrectIdx)b.classList.add('correct');});
-      document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${escHtml(answer)}</div>`;
-      vocaCurrentQ++; setTimeout(()=>showVocaMC(type),1800);
-    } else {submitVocaMC(type);}
-  });
+    <div id="feedback"></div>`;
+  startPerQuestionTimer(10,()=>{if(window._vocaSubmitted)return;if(window._vocaSelectedIdx===-1){window._vocaSubmitted=true;vocaWrong.push({word:q.word,meaning:q.meaning});document.querySelectorAll('.option').forEach(b=>{b.disabled=true;if(Number(b.dataset.idx)===window._vocaCorrectIdx)b.classList.add('correct');});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${escHtml(answer)}</div>`;vocaCurrentQ++;setTimeout(()=>showVocaMC(type),1800);}else{submitVocaMC(type);}});
 }
 
-function selectVocaOpt(idx){
-  document.querySelectorAll('.option').forEach(b=>b.classList.remove('selected'));
-  const btn=document.querySelector(`.option[data-idx="${idx}"]`);
-  if(btn)btn.classList.add('selected');
-  window._vocaSelectedIdx=idx;
-}
+function selectVocaOpt(idx){document.querySelectorAll('.option').forEach(b=>b.classList.remove('selected'));const btn=document.querySelector(`.option[data-idx="${idx}"]`);if(btn)btn.classList.add('selected');window._vocaSelectedIdx=idx;}
 
 function submitVocaMC(type){
   if(window._vocaSubmitted)return;
@@ -2126,13 +1882,8 @@ function submitVocaMC(type){
   vocaCurrentQ++; setTimeout(()=>showVocaMC(type),1800);
 }
 
-// Stage 3: 한→영 타이핑
 function showVocaType() {
-  if(vocaCurrentQ>=vocaQuestions.length){
-    stopTimer();
-    vocaStageResults[3]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};
-    vocaStageIdx++; showVocaStageResult(3); return;
-  }
+  if(vocaCurrentQ>=vocaQuestions.length){stopTimer();vocaStageResults[3]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};vocaStageIdx++;showVocaStageResult(3);return;}
   const q=vocaQuestions[vocaCurrentQ];
   document.getElementById('voca-quiz-content').innerHTML=`
     <div class="stage-badge">3단계 · 한→영 타이핑</div>
@@ -2144,8 +1895,7 @@ function showVocaType() {
     <div class="question-sub" style="font-size:22px;font-weight:700;text-align:center">${escHtml(q.meaning)}</div>
     <input type="text" id="voca-input" placeholder="영어 단어 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="text-align:center;font-size:20px"/>
     <button class="btn btn-primary" onclick="submitVocaType()">제출</button>
-    <div id="feedback"></div>
-  `;
+    <div id="feedback"></div>`;
   window._vocaSubmitted=false;
   setTimeout(()=>{const inp=document.getElementById('voca-input');if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitVocaType();});}},100);
   startPerQuestionTimer(40,()=>{if(window._vocaSubmitted)return;window._vocaSubmitted=true;vocaWrong.push({word:q.word,meaning:q.meaning});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${q.word}</div>`;const inp=document.getElementById('voca-input');if(inp)inp.disabled=true;vocaCurrentQ++;setTimeout(showVocaType,1800);});
@@ -2153,27 +1903,18 @@ function showVocaType() {
 
 function submitVocaType(){
   if(window._vocaSubmitted)return;
-  const inp=document.getElementById('voca-input');
-  if(!inp)return;
-  const user=(inp.value||'').trim();
-  if(!user){inp.focus();return;}
+  const inp=document.getElementById('voca-input');if(!inp)return;
+  const user=(inp.value||'').trim();if(!user){inp.focus();return;}
   window._vocaSubmitted=true; stopTimer();
-  const q=vocaQuestions[vocaCurrentQ];
-  inp.disabled=true;
-  // 괄호 생략 허용: 괄호 안 내용 제거하고 비교
+  const q=vocaQuestions[vocaCurrentQ];inp.disabled=true;
   const clean=s=>s.toLowerCase().replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
   if(clean(user)===clean(q.word)||user.toLowerCase()===q.word.toLowerCase()){vocaScore++;document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';}
   else{vocaWrong.push({word:q.word,meaning:q.meaning,userAnswer:inp.value});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">✗ 오답 · 정답: ${q.word}</div>`;}
   vocaCurrentQ++; setTimeout(showVocaType,1800);
 }
 
-// Stage 4: Unscramble
 function showVocaScramble() {
-  if(vocaCurrentQ>=vocaQuestions.length){
-    stopTimer();
-    vocaStageResults[4]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};
-    vocaStageIdx++; showVocaStageResult(4); return;
-  }
+  if(vocaCurrentQ>=vocaQuestions.length){stopTimer();vocaStageResults[4]={score:vocaScore,total:vocaQuestions.length,wrong:vocaWrong};vocaStageIdx++;showVocaStageResult(4);return;}
   const q=vocaQuestions[vocaCurrentQ];
   const scrambled=scrambleWord(q.word);
   document.getElementById('voca-quiz-content').innerHTML=`
@@ -2187,8 +1928,7 @@ function showVocaScramble() {
     <div style="text-align:center;font-size:26px;letter-spacing:8px;margin:16px 0;font-family:monospace;color:var(--accent);font-weight:700">${escHtml(scrambled.toUpperCase())}</div>
     <input type="text" id="voca-input" placeholder="영어 단어 입력" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="text-align:center;font-size:20px"/>
     <button class="btn btn-primary" onclick="submitVocaScramble()">제출</button>
-    <div id="feedback"></div>
-  `;
+    <div id="feedback"></div>`;
   window._vocaSubmitted=false;
   setTimeout(()=>{const inp=document.getElementById('voca-input');if(inp){inp.focus();inp.addEventListener('keydown',e=>{if(e.key==='Enter')submitVocaScramble();});}},100);
   startPerQuestionTimer(40,()=>{if(window._vocaSubmitted)return;window._vocaSubmitted=true;vocaWrong.push({word:q.word,meaning:q.meaning});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">⏱ 시간 초과 · 정답: ${q.word}</div>`;const inp=document.getElementById('voca-input');if(inp)inp.disabled=true;vocaCurrentQ++;setTimeout(showVocaScramble,1800);});
@@ -2196,13 +1936,10 @@ function showVocaScramble() {
 
 function submitVocaScramble(){
   if(window._vocaSubmitted)return;
-  const inp=document.getElementById('voca-input');
-  if(!inp)return;
-  const user=(inp.value||'').trim();
-  if(!user){inp.focus();return;}
+  const inp=document.getElementById('voca-input');if(!inp)return;
+  const user=(inp.value||'').trim();if(!user){inp.focus();return;}
   window._vocaSubmitted=true; stopTimer();
-  const q=vocaQuestions[vocaCurrentQ];
-  inp.disabled=true;
+  const q=vocaQuestions[vocaCurrentQ];inp.disabled=true;
   if(user.toLowerCase()===q.word.toLowerCase()){vocaScore++;document.getElementById('feedback').innerHTML='<div class="feedback-correct">✓ 정답!</div>';}
   else{vocaWrong.push({word:q.word,meaning:q.meaning,userAnswer:inp.value});document.getElementById('feedback').innerHTML=`<div class="feedback-wrong">✗ 오답 · 정답: ${q.word}</div>`;}
   vocaCurrentQ++; setTimeout(showVocaScramble,1800);
@@ -2219,31 +1956,18 @@ function showVocaStageResult(stage){
       </div>
       <p style="color:var(--text2);font-size:15px">${r.score}/${r.total} 정답</p>
     </div>
-    <button class="btn btn-primary" style="margin-top:8px" onclick="runNextVocaStage()">${isLast?'최종 결과 보기':'다음 단계 →'}</button>
-  `;
+    <button class="btn btn-primary" style="margin-top:8px" onclick="runNextVocaStage()">${isLast?'최종 결과 보기':'다음 단계 →'}</button>`;
   saveVocaResult(stage,r);
 }
 
 async function saveVocaResult(stage,r){
-  try {
-    const wrongContent=r.wrong.map(w=>`${w.word}(${w.meaning})`).join(', ');
-    await apiPost({
-      action:'saveVocaResult', name:currentUser.name, id:currentUser.id,
-      school:currentUser.school||'', book:vocaBook, unit:vocaUnit,
-      stage, score:r.score, total:r.total, wrongContent
-    });
-  } catch(e){}
+  try{const wrongContent=r.wrong.map(w=>`${w.word}(${w.meaning})`).join(', ');await apiPost({action:'saveVocaResult',name:currentUser.name,id:currentUser.id,school:currentUser.school||'',book:vocaBook,unit:vocaUnit,stage,score:r.score,total:r.total,wrongContent});}catch(e){}
 }
 
 function finishVocaAll(){
-  showScreen('screen-voca-result');
-  quizActive=false;
-  let totalScore=0,totalQ=0;
-  const allWrong=[];
-  Object.entries(vocaStageResults).forEach(([s,r])=>{
-    totalScore+=r.score; totalQ+=r.total;
-    r.wrong.forEach(w=>{if(!allWrong.find(x=>x.word===w.word))allWrong.push(w);});
-  });
+  showScreen('screen-voca-result');quizActive=false;
+  let totalScore=0,totalQ=0;const allWrong=[];
+  Object.entries(vocaStageResults).forEach(([s,r])=>{totalScore+=r.score;totalQ+=r.total;r.wrong.forEach(w=>{if(!allWrong.find(x=>x.word===w.word))allWrong.push(w);});});
   const pct=totalQ>0?Math.round(totalScore/totalQ*100):0;
   window._vocaAllWrong=allWrong;
   document.getElementById('voca-result-content').innerHTML=`
@@ -2252,39 +1976,19 @@ function finishVocaAll(){
       <div class="score-circle"><span class="score-num">${pct}</span><span class="score-label">점</span></div>
       <p style="color:var(--text2);font-size:14px">${totalScore}/${totalQ} 정답</p>
     </div>
-    ${allWrong.length?`
-      <div style="margin-top:14px">
-        <p style="font-weight:700;font-size:15px;margin-bottom:8px">틀린 단어 (${allWrong.length}개)</p>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          ${allWrong.map(w=>`<div style="background:#fef2f2;border-left:3px solid var(--danger);border-radius:0 8px 8px 0;padding:8px 12px;font-size:14px"><b>${escHtml(w.word)}</b> — ${escHtml(w.meaning)}</div>`).join('')}
-        </div>
-      </div>
-      <button class="btn btn-primary" style="margin-top:14px" onclick="retryVocaWrong()">틀린 단어만 재시험</button>
-    `:'<p style="color:var(--success);text-align:center;margin-top:14px">모두 맞았어요!</p>'}
+    ${allWrong.length?`<div style="margin-top:14px"><p style="font-weight:700;font-size:15px;margin-bottom:8px">틀린 단어 (${allWrong.length}개)</p><div style="display:flex;flex-direction:column;gap:5px">${allWrong.map(w=>`<div style="background:#fef2f2;border-left:3px solid var(--danger);border-radius:0 8px 8px 0;padding:8px 12px;font-size:14px"><b>${escHtml(w.word)}</b> — ${escHtml(w.meaning)}</div>`).join('')}</div></div><button class="btn btn-primary" style="margin-top:14px" onclick="retryVocaWrong()">틀린 단어만 재시험</button>`:'<p style="color:var(--success);text-align:center;margin-top:14px">모두 맞았어요!</p>'}
     <button class="btn btn-secondary" style="margin-top:8px" onclick="copyVocaKakao()">카카오 복사</button>
     <button class="btn btn-secondary" onclick="showScreen('screen-voca-select')">다른 단어장</button>
-    <button class="btn btn-secondary" onclick="showScreen('screen-welcome')">홈으로</button>
-  `;
+    <button class="btn btn-secondary" onclick="showScreen('screen-welcome')">홈으로</button>`;
 }
 
-function retryVocaWrong(){
-  const wrong=window._vocaAllWrong||[];
-  if(!wrong.length)return;
-  vocaWords=wrong.map(w=>({word:w.word,meaning:w.meaning}));
-  vocaQueue=[1,2]; vocaStageIdx=0; vocaStageResults={};
-  showScreen('screen-voca-quiz');
-  quizActive=true;
-  runNextVocaStage();
-}
+function retryVocaWrong(){const wrong=window._vocaAllWrong||[];if(!wrong.length)return;vocaWords=wrong.map(w=>({word:w.word,meaning:w.meaning}));vocaQueue=[1,2];vocaStageIdx=0;vocaStageResults={};showScreen('screen-voca-quiz');quizActive=true;runNextVocaStage();}
 
 function copyVocaKakao(){
   const now=new Date();
   const dateStr=now.toLocaleString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
   const lines=[`[단어 TEST 결과]`,`이름: ${currentUser.name}`,`날짜: ${dateStr}`,`단어장: ${vocaBook} · ${vocaUnit}`,``];
-  Object.entries(vocaStageResults).forEach(([s,r])=>{
-    const names={1:'1단계(영→한)',2:'2단계(한→영)',3:'3단계(타이핑)',4:'4단계(철자배열)'};
-    lines.push(`${names[s]||s}: ${r.score}/${r.total}`);
-  });
+  Object.entries(vocaStageResults).forEach(([s,r])=>{const names={1:'1단계(영→한)',2:'2단계(한→영)',3:'3단계(타이핑)',4:'4단계(철자배열)'};lines.push(`${names[s]||s}: ${r.score}/${r.total}`);});
   const wrong=window._vocaAllWrong||[];
   if(wrong.length){lines.push('');lines.push(`틀린 단어: ${wrong.map(w=>w.word).join(', ')}`);}
   const text=lines.join('\n');
