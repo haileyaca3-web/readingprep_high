@@ -447,6 +447,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
     <div style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap">
       <button id="tab-today" class="btn btn-primary" style="padding:9px 16px;width:auto;font-size:14px" onclick="switchTeacherTab('today')">결과보기</button>
       <button id="tab-input" class="btn btn-secondary" style="padding:9px 16px;width:auto;font-size:14px;margin:0" onclick="switchTeacherTab('input')">지문입력</button>
+      <button id="tab-words" class="btn btn-secondary" style="padding:9px 16px;width:auto;font-size:14px;margin:0" onclick="switchTeacherTab('words')">단어PDF</button>
       <button id="tab-students" class="btn btn-secondary" style="padding:9px 16px;width:auto;font-size:14px;margin:0" onclick="switchTeacherTab('students')">학생관리</button>
     </div>
     <div id="teacher-content"></div>
@@ -901,6 +902,43 @@ async function startTest() {
       document.getElementById('quiz-content').innerHTML = '<p style="color:var(--danger);text-align:center;padding:20px">지문 데이터가 없습니다.<br>선생님께 문의하세요.</p>';
       return;
     }
+    // 단어 데이터 없으면 Claude API로 자동 추출
+    if (!wordsData || !wordsData.length) {
+      document.getElementById('quiz-content').innerHTML = '<div class="loader"><div class="spinner"></div>수능 어휘 분석 중...</div>';
+      try {
+        const fullText = passageData.sentences.map(s=>s.eng).join(' ');
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': CLAUDE_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 800,
+            messages: [{ role: 'user', content: `다음 수능 영어 지문에서 고등학생이 알아야 할 핵심 어휘 6~8개를 추출해주세요.
+
+조건:
+- 수능 빈출 어휘 위주
+- the, a, is, are, have, this, that 등 기초/관사/조동사 제외
+- 명사, 동사, 형용사, 부사 위주
+- 순수 JSON 배열만 반환 (설명 없이)
+
+형식: [{"word":"영단어","meaning":"한국어뜻"}]
+
+지문:
+${fullText}` }]
+          })
+        });
+        const data = await response.json();
+        if (data.content && data.content[0]) {
+          const text = data.content[0].text.replace(/```json|```/g,'').trim();
+          wordsData = JSON.parse(text);
+        }
+      } catch(e) { wordsData = []; }
+    }
     runNextStage();
   } catch(e) {
     document.getElementById('quiz-content').innerHTML = '<p style="color:var(--danger)">데이터를 불러오지 못했습니다.</p>';
@@ -939,38 +977,19 @@ function showEn2KoQ() {
   window._correctIndex = opts.indexOf(q.kor);
   window._currentEng = q.eng; window._currentAnswer = q.kor;
   window._selectedIdx = -1; window._submitted = false;
-  const isWide = window.innerWidth >= 600;
   const pct = (currentQ/questions.length)*100;
-  if (isWide) {
-    document.getElementById('quiz-content').innerHTML = `
-      <div class="stage-badge">1단계 · 문장 선택 (한국어)</div>
-      <div class="quiz-header">
-        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      </div>
-      <p style="font-size:14px;color:var(--text2);margin-bottom:12px">영어 문장에 맞는 한국어 해석을 고르세요</p>
-      <div class="split-layout">
-        <div class="split-passage"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">영어 문장</div>${escHtml(q.eng)}</div>
-        <div class="split-options">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:700">선지</div>
-          ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}
-        </div>
-      </div>
-      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('en2ko')">제출</button>
-      <div id="feedback"></div>`;
-  } else {
-    document.getElementById('quiz-content').innerHTML = `
-      <div class="stage-badge">1단계 · 문장 선택 (한국어)</div>
-      <div class="quiz-header">
-        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      </div>
-      <div class="question-text">한국어 뜻을 고르세요</div>
-      <div class="question-sub">${escHtml(q.eng)}</div>
-      <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}</div>
-      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('en2ko')">제출</button>
-      <div id="feedback"></div>`;
-  }
+  document.getElementById('quiz-content').innerHTML = `
+    <div class="stage-badge">1단계 · 문장 선택 (한국어)</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:6px">영어 문장</div>
+    <div class="question-sub" style="margin-bottom:16px;line-height:1.9">${escHtml(q.eng)}</div>
+    <div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:8px">한국어 해석을 고르세요</div>
+    <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}</div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('en2ko')">제출</button>
+    <div id="feedback"></div>`;
   startPerQuestionTimer(20, () => {
     if (window._submitted) return;
     if (window._selectedIdx===-1) {
@@ -1016,38 +1035,19 @@ function showKo2EnQ() {
   window._correctIndex = opts.indexOf(q.eng);
   window._currentKor = q.kor; window._currentAnswer = q.eng;
   window._selectedIdx = -1; window._submitted = false;
-  const isWide = window.innerWidth >= 600;
   const pct = (currentQ/questions.length)*100;
-  if (isWide) {
-    document.getElementById('quiz-content').innerHTML = `
-      <div class="stage-badge">2단계 · 문장 선택 (영어)</div>
-      <div class="quiz-header">
-        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      </div>
-      <p style="font-size:14px;color:var(--text2);margin-bottom:12px">한국어 해석에 맞는 영어 문장을 고르세요</p>
-      <div class="split-layout">
-        <div class="split-passage" style="color:var(--accent);font-weight:500"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:700">한국어 해석</div>${escHtml(q.kor)}</div>
-        <div class="split-options">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:700">선지</div>
-          ${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}
-        </div>
-      </div>
-      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('ko2en')">제출</button>
-      <div id="feedback"></div>`;
-  } else {
-    document.getElementById('quiz-content').innerHTML = `
-      <div class="stage-badge">2단계 · 문장 선택 (영어)</div>
-      <div class="quiz-header">
-        <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      </div>
-      <div class="question-text">영어 문장을 고르세요</div>
-      <div class="korean-hint">${escHtml(q.kor)}</div>
-      <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${escHtml(o)}</button>`).join('')}</div>
-      <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('ko2en')">제출</button>
-      <div id="feedback"></div>`;
-  }
+  document.getElementById('quiz-content').innerHTML = `
+    <div class="stage-badge">2단계 · 문장 선택 (영어)</div>
+    <div class="quiz-header">
+      <div class="timer-row"><span class="q-num">${currentQ+1} / ${questions.length}</span><span id="timer-display">20초</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:6px">한국어 해석</div>
+    <div class="korean-hint" style="margin-bottom:16px">${escHtml(q.kor)}</div>
+    <div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:8px">영어 문장을 고르세요</div>
+    <div class="options">${opts.map((o,i)=>`<button class="option" data-idx="${i}" onclick="selectOpt(${i})">${i+1}. ${escHtml(o)}</button>`).join('')}</div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="submitSentence('ko2en')">제출</button>
+    <div id="feedback"></div>`;
   startPerQuestionTimer(20, () => {
     if (window._submitted) return;
     if (window._selectedIdx===-1) {
@@ -1453,15 +1453,117 @@ function teacherLogin() {
 
 function switchTeacherTab(tab) {
   currentTeacherTab=tab;
-  ['today','input','students'].forEach(t=>{
+  ['today','input','words','students'].forEach(t=>{
     const btn=document.getElementById('tab-'+t);
     if(!btn)return;
     btn.className=t===tab?'btn btn-primary':'btn btn-secondary';
     btn.style.cssText='padding:9px 16px;width:auto;font-size:14px;margin:0';
   });
   if(tab==='input'){showPassageInput().then(()=>updateApiKeyStatus());}
+  else if(tab==='words')showWordsPDF();
   else if(tab==='students')showStudentManage();
   else loadTeacherData();
+}
+
+async function showWordsPDF() {
+  let books=[];
+  try{books=await apiCached({action:'getBooks'});}catch(e){}
+  document.getElementById('teacher-content').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="background:var(--accent-light);border:1px solid var(--accent-border);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--accent)">
+        📄 모의고사 단어집 PDF를 올리면 AI가 <b>지문번호별</b>로 단어를 자동 분리해서 저장합니다.
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">교재 선택</div>
+        <div class="select-wrap"><select id="words-book" style="margin:0">
+          <option value="">교재를 선택하세요</option>
+          ${books.map(b=>`<option value="${b}">${b}</option>`).join('')}
+        </select></div>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">Unit</div>
+        <input type="text" id="words-unit" placeholder="예: 9월 학평" style="margin:0"/>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">단어집 PDF</div>
+        <div class="photo-area" onclick="document.getElementById('words-pdf-input').click()">
+          <div style="font-size:15px;font-weight:700;color:var(--accent)">📎 PDF 업로드</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:4px">AI가 지문번호별 단어 자동 추출</div>
+        </div>
+        <input type="file" id="words-pdf-input" accept="application/pdf,image/*" style="display:none" onchange="processWordsPDF(this)"/>
+      </div>
+      <div id="words-preview"></div>
+      <div id="words-msg" class="msg"></div>
+    </div>`;
+}
+
+async function processWordsPDF(input) {
+  const file = input.files[0]; if(!file) return;
+  const book = document.getElementById('words-book').value;
+  const unit = document.getElementById('words-unit').value.trim();
+  const msg = document.getElementById('words-msg');
+  const preview = document.getElementById('words-preview');
+  if(!book||!unit){msg.className='msg error';msg.textContent='교재와 Unit을 선택하세요.';return;}
+  if(!CLAUDE_API_KEY){msg.className='msg error';msg.textContent='API 키가 설정되지 않았습니다.';return;}
+  msg.className='msg';msg.textContent='AI가 단어 분석 중...';
+  preview.innerHTML='';
+  try {
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej(new Error('읽기 실패'));r.readAsDataURL(file);});
+    const mediaType = file.type === 'application/pdf' ? 'application/pdf' : file.type;
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':CLAUDE_API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:4000,
+        messages:[{role:'user',content:[
+          {type: mediaType==='application/pdf' ? 'document' : 'image',
+           source:{type:'base64',media_type:mediaType,data:base64}},
+          {type:'text',text:`이 문서에서 지문 번호별 단어 목록을 추출해주세요.
+18번, 19번, 20번... 이런 식으로 지문 번호가 있고 각 번호 아래에 단어들이 나열되어 있습니다.
+
+순수 JSON만 반환하세요:
+{"passages":[{"passageNum":"18","words":[{"word":"영단어","meaning":"한국어뜻"}]},{"passageNum":"19","words":[...]}]}`}
+        ]}]
+      })
+    });
+    const data=await response.json();
+    if(data.error)throw new Error(data.error.message);
+    const text=data.content[0].text.replace(/\`\`\`json|\`\`\`/g,'').trim();
+    const parsed=JSON.parse(text);
+    const passages=parsed.passages||[];
+    if(!passages.length){msg.className='msg error';msg.textContent='단어를 찾지 못했습니다.';return;}
+
+    // 미리보기
+    let html=`<hr class="divider"><p style="font-weight:700;margin-bottom:10px">추출된 단어 (${passages.length}개 지문)</p>`;
+    passages.forEach(p=>{
+      html+=`<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px">${p.passageNum}번 (${p.words.length}개)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${p.words.map(w=>`<span style="background:var(--accent-light);border:1px solid var(--accent-border);border-radius:6px;padding:3px 8px;font-size:13px"><b>${escHtml(w.word)}</b> ${escHtml(w.meaning)}</span>`).join('')}
+        </div>
+      </div>`;
+    });
+    html+=`<button class="btn btn-primary" onclick="saveWordsPDF(${JSON.stringify(passages).replace(/"/g,'&quot;')})">저장하기</button>`;
+    preview.innerHTML=html;
+    msg.className='msg success';msg.textContent=`${passages.length}개 지문 단어 추출 완료!`;
+    window._wordsPDFData={book,unit,passages};
+  } catch(e){msg.className='msg error';msg.textContent='오류: '+e.message;}
+}
+
+async function saveWordsPDF(passages) {
+  const d=window._wordsPDFData;
+  if(!d){alert('다시 업로드해주세요.');return;}
+  const msg=document.getElementById('words-msg');
+  msg.className='msg';msg.textContent='저장 중...';
+  try {
+    let total=0;
+    for(const p of (passages||d.passages)){
+      await apiPost({action:'saveWords',book:d.book,unit:d.unit,passageNum:p.passageNum,words:p.words});
+      total+=p.words.length;
+    }
+    msg.className='msg success';msg.textContent=`완료! 총 ${total}개 단어 저장됐어요.`;
+  } catch(e){msg.className='msg error';msg.textContent='저장 실패: '+e.message;}
 }
 
 async function loadTeacherData() {
