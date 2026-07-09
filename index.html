@@ -706,6 +706,7 @@ async function login() {
       const cheers = ['The expert in anything was once a beginner.','Practice makes perfect.','Every mistake is a step forward.','Believe you can and you\'re halfway there.','Confidence comes from preparation.','Calm mind, clear answers.','Trust the process, trust yourself.','Dream big. Work hard. Stay focused.','Today is a new chance to do better.','Small steps lead to big results.'];
       document.getElementById('welcome-cheer').textContent = `"${cheers[Math.floor(Math.random()*cheers.length)]}"`;
       showScreen('screen-welcome');
+      clearCache('getBooks');
       loadBooks().catch(()=>{});
     } else if (r.result === 'pending') {
       msg.className='msg warn'; msg.textContent='승인 대기 중입니다. 선생님 승인 후 이용 가능해요.';
@@ -906,7 +907,11 @@ function renderCurrentBookBanner() {
     <button onclick="changeBook()" style="background:white;border:1.5px solid var(--accent);color:var(--accent);padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">바꾸기</button>
   `;
 }
-function changeBook() { showScreen('screen-book'); }
+function changeBook() {
+  clearCache('getBooks');
+  loadBooks().catch(()=>{});
+  showScreen('screen-book');
+}
 
 async function loadMyStageCounts() {
   myStageCounts = {1:0,2:0,3:0,6:0,'4-1':0,'4-2':0};
