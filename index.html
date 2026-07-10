@@ -1544,21 +1544,22 @@ async function processWordsPDF(input) {
         </div>
       </div>`;
     });
-    html+=`<button class="btn btn-primary" onclick="saveWordsPDF(${JSON.stringify(passages).replace(/"/g,'&quot;')})">저장하기</button>`;
+    html+=`<button class="btn btn-primary" onclick="saveWordsPDF()">저장하기</button>`;
     preview.innerHTML=html;
     msg.className='msg success';msg.textContent=`${passages.length}개 지문 단어 추출 완료!`;
     window._wordsPDFData={book,unit,passages};
   } catch(e){msg.className='msg error';msg.textContent='오류: '+e.message;}
 }
 
-async function saveWordsPDF(passages) {
+async function saveWordsPDF() {
   const d=window._wordsPDFData;
   if(!d){alert('다시 업로드해주세요.');return;}
+  const passages=d.passages;
   const msg=document.getElementById('words-msg');
   msg.className='msg';msg.textContent='저장 중...';
   try {
     let total=0;
-    for(const p of (passages||d.passages)){
+    for(const p of passages){
       await apiPost({action:'saveWords',book:d.book,unit:d.unit,passageNum:p.passageNum,words:p.words});
       total+=p.words.length;
     }
