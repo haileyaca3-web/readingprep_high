@@ -1418,22 +1418,53 @@ async function showMyRecords() {
   showScreen('screen-records');
   try {
     const results=await api({action:'getResults',id:currentUser.id});
-    const todayStr=new Date().toLocaleDateString('ko-KR');
-    const my=(results||[]).filter(r=>String(r.id)===String(currentUser.id)&&String(r.date||'').includes(todayStr));
-    if(!my.length){el.innerHTML='<p style="color:var(--text2);text-align:center;padding:30px">오늘 응시한 기록이 없어요.</p>';return;}
+    const sevenDaysAgo=Date.now()-7*24*60*60*1000;
+    const my=(results||[]).filter(r=>{
+      if(String(r.id)!==String(currentUser.id))return false;
+      const t=parseKoreanDate(r.date);
+      return t>=sevenDaysAgo;
+    });
+    if(!my.length){el.innerHTML='<p style="color:var(--text2);text-align:center;padding:30px">최근 7일간 응시한 기록이 없어요.</p>';return;}
     const groups={};
-    my.forEach(r=>{const key=`${r.book}__${r.unit}`;if(!groups[key])groups[key]={book:r.book,unit:r.unit,items:[],latestDate:0};groups[key].items.push(r);const t=parseKoreanDate(r.date);if(t>groups[key].latestDate)groups[key].latestDate=t;});
-    let html='<div style="display:flex;flex-direction:column;gap:12px">';
+    my.forEach(r=>{
+      const key=r.book+'__'+r.unit+'__'+String(r.date).substring(0,10);
+      if(!groups[key])groups[key]={book:r.book,unit:r.unit,date:r.date,items:[],latestDate:0};
+      groups[key].items.push(r);
+      const t=parseKoreanDate(r.date);
+      if(t>groups[key].latestDate)groups[key].latestDate=t;
+    });
+    let html='<div style="display:flex;flex-direction:column;gap:14px">';
     Object.values(groups).sort((a,b)=>b.latestDate-a.latestDate).forEach(g=>{
       const stages={};
       g.items.forEach(r=>{const s=Number(r.stage);if(s===4){const k=String(r.retry).toUpperCase()==='Y'?'4-2':'4-1';if(!stages[k])stages[k]=[];stages[k].push(r);}else{if(!stages[s])stages[s]=[];stages[s].push(r);}});
-      const labels={1:'1단계',2:'2단계',3:'3-1단계',6:'3-2단계','4-1':'4-1단계','4-2':'4-2단계'};
-      const summary=Object.entries(stages).filter(([,v])=>v.length>0).map(([k,v])=>`${labels[k]||k} ${v.length}회`).join(' · ');
-      html+=`<div style="background:var(--surface2);border-radius:10px;padding:14px">
-        <div style="font-weight:700;font-size:16px">${escHtml(g.book)}</div>
-        <div style="font-size:14px;color:var(--text);margin-top:2px">${escHtml(g.unit)}</div>
-        <div style="font-size:13px;color:var(--text2);margin-top:6px">${summary||'응시 기록 없음'}</div>
-      </div>`;
+      const stageInfoList=[['1','1단계'],['2','2단계'],['3','3-1단계'],['6','3-2단계'],['4-1','4-1단계'],['4-2','4-2단계']];
+      let stageHtml='';
+      stageInfoList.forEach(([key,label])=>{
+        const arr=stages[key]; if(!arr||!arr.length)return;
+        arr.forEach(r=>{
+          const pct=r.total>0?Math.round(r.score/r.total*100):0;
+          const color=pct>=70?'var(--success)':'var(--danger)';
+          const wrongItems=parseWrongContent(r.wrongContent, key);
+          stageHtml+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">';
+          stageHtml+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+          stageHtml+='<span style="font-size:14px;font-weight:700">'+label+'</span>';
+          stageHtml+='<span style="font-size:14px;font-weight:700;color:'+color+'">'+r.score+'/'+r.total+' ('+pct+'점)</span>';
+          stageHtml+='</div>';
+          if(wrongItems.length){
+            stageHtml+='<div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:4px">오답 '+wrongItems.length+'개</div>';
+            wrongItems.forEach(w=>{stageHtml+='<div style="background:#fef2f2;border-left:3px solid var(--danger);border-radius:0 6px 6px 0;padding:7px 10px;margin-bottom:4px;font-size:13px;line-height:1.6">'+w+'</div>';});
+          } else {
+            stageHtml+='<div style="font-size:13px;color:var(--success)">오답 없음 🎉</div>';
+          }
+          stageHtml+='</div>';
+        });
+      });
+      html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">';
+      html+='<div style="font-weight:700;font-size:16px">'+escHtml(g.book)+'</div>';
+      html+='<div style="font-size:14px;color:var(--text);margin-top:2px">'+escHtml(g.unit)+'</div>';
+      html+='<div style="font-size:12px;color:var(--text2);margin-top:2px">'+escHtml(String(g.date))+'</div>';
+      html+=stageHtml;
+      html+='</div>';
     });
     html+='</div>';
     el.innerHTML=html;
@@ -1529,7 +1560,7 @@ async function processWordsPDF(input) {
     });
     const data=await response.json();
     if(data.error)throw new Error(data.error.message);
-    const text=data.content[0].text.replace(/\`\`\`json|\`\`\`/g,'').trim();
+    const text=data.content[0].text.replace(/```json|```/g,'').trim();
     const parsed=JSON.parse(text);
     const passages=parsed.passages||[];
     if(!passages.length){msg.className='msg error';msg.textContent='단어를 찾지 못했습니다.';return;}
