@@ -365,38 +365,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
     </div>
     <div id="current-book-banner"></div>
     <p style="font-size:14px;color:var(--text2);margin-bottom:16px">진행할 단계를 선택하세요 (여러 개 가능)</p>
-    <div style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <span class="tag tag-pre">수업 전</span>
-        <span style="font-size:13px;color:var(--text2)">읽기 전 이해도 점검</span>
+    <div class="stage-grid" style="margin-bottom:14px">
+      <div class="stage-card" id="stage-1" onclick="toggleStage(1)">
+        <div class="num">1</div><div class="label">문장선택<br>(한국어)</div>
       </div>
-      <div class="stage-grid">
-        <div class="stage-card" id="stage-1" onclick="toggleStage(1)">
-          <div class="num">1</div><div class="label">문장선택<br>(한국어)</div>
-        </div>
-        <div class="stage-card" id="stage-2" onclick="toggleStage(2)">
-          <div class="num">2</div><div class="label">문장선택<br>(영어)</div>
-        </div>
+      <div class="stage-card" id="stage-2" onclick="toggleStage(2)">
+        <div class="num">2</div><div class="label">문장선택<br>(영어)</div>
       </div>
-    </div>
-    <div style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <span class="tag tag-post">수업 후</span>
-        <span style="font-size:13px;color:var(--text2)">학습 후 마무리</span>
+      <div class="stage-card" id="stage-3" onclick="toggleStage(3)">
+        <div class="num">3-1</div><div class="label">단어 객관식</div>
       </div>
-      <div class="stage-grid">
-        <div class="stage-card" id="stage-3" onclick="toggleStage(3)">
-          <div class="num">3-1</div><div class="label">단어 객관식</div>
-        </div>
-        <div class="stage-card" id="stage-6" onclick="toggleStage(6)">
-          <div class="num">3-2</div><div class="label">단어 주관식</div>
-        </div>
-        <div class="stage-card" id="stage-4" onclick="toggleStage(4)">
-          <div class="num">4-1</div><div class="label">빈칸 객관식</div>
-        </div>
-        <div class="stage-card" id="stage-5" onclick="toggleStage(5)">
-          <div class="num">4-2</div><div class="label">빈칸 주관식</div>
-        </div>
+      <div class="stage-card" id="stage-6" onclick="toggleStage(6)">
+        <div class="num">3-2</div><div class="label">단어 주관식</div>
+      </div>
+      <div class="stage-card" id="stage-4" onclick="toggleStage(4)">
+        <div class="num">4-1</div><div class="label">빈칸 객관식</div>
+      </div>
+      <div class="stage-card" id="stage-5" onclick="toggleStage(5)">
+        <div class="num">4-2</div><div class="label">빈칸 주관식</div>
       </div>
     </div>
     <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text2);margin-bottom:14px">
@@ -1357,8 +1343,8 @@ async function saveStageResult(stageKey, r) {
       : stageKey===4
       ? r.wrong.map(w=>w.blankWord||'').filter(Boolean).join(', ')
       : stageKey===2
-      ? r.wrong.map(w=>`${w.sentence}|||${w.correct}`).join('///')
-      : r.wrong.map(w=>`${w.kor}|||${w.eng}`).join('///');
+      ? r.wrong.map(w=>`${w.kor}|||${w.eng}`).join('///')
+      : r.wrong.map(w=>`${w.sentence}|||${w.correct}`).join('///');
     await apiPost({
       action:'saveResult', name:currentUser.name, id:currentUser.id,
       book:selectedBook, unit:selectedUnit, passages:selectedPassages.join(','),
@@ -1693,7 +1679,7 @@ function buildDetailHTML(stu) {
 function parseWrongContent(content, stageKey) {
   if(!content||String(content).trim()==='')return[];
   const s=String(content).trim();
-  if(s.includes('///')){return s.split('///').map(pair=>{const parts=pair.split('|||');if(parts.length>=2)return`<b>영어:</b> ${escHtml(parts[0].trim())}<br><b>한국어:</b> ${escHtml(parts[1].trim())}`;return escHtml(parts[0].trim());}).filter(Boolean);}
+  if(s.includes('///')){return s.split('///').map(pair=>{const parts=pair.split('|||');if(parts.length>=2)return`<b>한국어:</b> ${escHtml(parts[0].trim())}<br><b>영어:</b> ${escHtml(parts[1].trim())}`;return escHtml(parts[0].trim());}).filter(Boolean);}
   if(s.includes('|||')){const parts=s.split('|||');return[`<b>${escHtml(parts[0]?.trim()||'')}</b> → ${escHtml(parts[1]?.trim()||'')}`];}
   return s.split(',').map(w=>w.trim()).filter(Boolean).map(w=>`<b>${escHtml(w)}</b>`);
 }
